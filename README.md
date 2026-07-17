@@ -1,6 +1,6 @@
-# AI-First Obsidian Vault
+# Sourceweave
 
-A reusable, local-first Obsidian vault framework for building a multi-topic personal knowledge base with AI agents such as Codex.
+An AI-first Obsidian vault framework that weaves captured sources into reviewed knowledge, generated wiki pages, and a connected multi-topic graph.
 
 The framework treats Markdown as the durable source format and separates captured material, reviewed knowledge, and generated synthesis. It is intentionally model-agnostic: your vault should outlive any particular AI provider.
 
@@ -68,7 +68,7 @@ Use a fork when contributing improvements back to this public framework. Use a t
 ### Local setup
 
 ```sh
-git clone https://github.com/YOUR-NAME/ai-first-obsidian-vault.git my-vault
+git clone https://github.com/YOUR-NAME/sourceweave.git my-vault
 cd my-vault
 python3 -m pip install -r requirements-dev.txt
 python3 scripts/validate_vault.py

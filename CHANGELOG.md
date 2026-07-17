@@ -15,4 +15,4 @@ The format is based on Keep a Changelog, and the project follows semantic versio
 - Example notes demonstrating cross-topic links.
 - Local and GitHub Actions validation.
 
-[Unreleased]: https://github.com/YOUR-NAME/ai-first-obsidian-vault/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/YOUR-NAME/sourceweave/compare/v0.1.0...HEAD

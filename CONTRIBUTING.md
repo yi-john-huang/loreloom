@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for improving the AI-First Obsidian Vault framework.
+Thank you for improving the Sourceweave framework.
 
 ## Scope
 

@@ -15,4 +15,9 @@ The format is based on Keep a Changelog, and the project follows semantic versio
 - Example notes demonstrating cross-topic links.
 - Local and GitHub Actions validation.
 
+### Changed
+
+- Replaced pip requirements with a locked uv project for local validation and CI.
+- Renamed the default branch from `main` to `master`.
+
 [Unreleased]: https://github.com/YOUR-NAME/sourceweave/compare/v0.1.0...HEAD

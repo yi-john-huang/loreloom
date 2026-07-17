@@ -67,11 +67,13 @@ Use a fork when contributing improvements back to this public framework. Use a t
 
 ### Local setup
 
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/) first. It manages the Python version and validation environment; no manual virtual environment or pip command is needed.
+
 ```sh
 git clone https://github.com/YOUR-NAME/sourceweave.git my-vault
 cd my-vault
-python3 -m pip install -r requirements-dev.txt
-python3 scripts/validate_vault.py
+uv sync --locked --dev
+uv run python scripts/validate_vault.py
 ```
 
 No Obsidian community plugin is required. Optional plugins are listed in [Getting Started](docs/GETTING_STARTED.md).
@@ -102,7 +104,7 @@ The reusable prompts in `.agents/prompts/` are deliberately explicit about input
 Run:
 
 ```sh
-python3 scripts/validate_vault.py
+uv run python scripts/validate_vault.py
 ```
 
 The validator checks:
@@ -114,6 +116,14 @@ The validator checks:
 - repository hygiene such as ignored private files.
 
 GitHub Actions runs the same check on pushes and pull requests.
+
+### Python toolchain
+
+- `.python-version` selects Python 3.13.
+- `pyproject.toml` declares validation dependencies.
+- `uv.lock` pins the complete cross-platform dependency graph and is committed.
+- `uv sync --locked --dev` reproduces the environment without changing the lockfile.
+- When intentionally updating dependencies, run `uv lock --upgrade`, validate, and commit `pyproject.toml` and `uv.lock` together.
 
 ## What this framework does not do
 

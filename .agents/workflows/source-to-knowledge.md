@@ -20,7 +20,7 @@ Turn captured evidence into a small set of cited Knowledge drafts without alteri
 6. Create or update only authorized `status: draft` Concept notes.
 7. Optionally append a `Derived notes` link to a Source when explicitly authorized; never rewrite its summary.
 8. Add useful cross-topic links and one appropriate MOC suggestion.
-9. Run `python3 scripts/validate_vault.py`.
+9. Run `uv run python scripts/validate_vault.py`.
 10. Hand off claims, uncertainty, duplicates, and human review needs.
 
 ## Stop conditions

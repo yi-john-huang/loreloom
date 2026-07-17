@@ -14,7 +14,7 @@ Build a traceable synthesis from declared Knowledge inputs while preserving huma
 6. Regenerate only after authorization.
 7. Set `generated: true`, the current `generated_at`, `generator`, complete `inputs`, and `review_status`.
 8. Restore the human block byte-for-byte.
-9. Validate the vault and inspect the diff.
+9. Run `uv run python scripts/validate_vault.py` and inspect the diff.
 10. Report changed conclusions, gaps, conflicts, and review needed.
 
 ## Rules

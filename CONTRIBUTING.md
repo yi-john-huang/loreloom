@@ -20,8 +20,10 @@ Personal notes, copied articles, credentials, proprietary prompts, and provider-
 2. Use a branch with a focused name such as `docs/source-citations`.
 3. Keep examples fictional, public-domain, or short original summaries with attribution.
 4. Update documentation and templates together when changing a convention.
-5. Run `python3 scripts/validate_vault.py`.
+5. Run `uv run python scripts/validate_vault.py`.
 6. Review the diff for names, emails, tokens, local paths, and confidential content.
+
+Python tooling uses uv. Declare validation dependencies in `pyproject.toml`, regenerate with `uv lock`, and commit the updated `uv.lock`. Do not add pip requirements files or hand-edit the lockfile.
 
 ## Compatibility promise
 

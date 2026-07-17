@@ -15,8 +15,8 @@ try:
     from jsonschema import Draft202012Validator, FormatChecker
 except ImportError as exc:
     print(
-        "Missing validation dependency. Run: "
-        "python3 -m pip install -r requirements-dev.txt",
+        "Missing validation dependency. Run: uv sync --locked --dev, "
+        "then use uv run python scripts/validate_vault.py",
         file=sys.stderr,
     )
     raise SystemExit(2) from exc

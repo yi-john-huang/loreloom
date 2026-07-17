@@ -52,7 +52,7 @@ While making changes:
 
 After making changes:
 
-- run `python3 scripts/validate_vault.py`;
+- run `uv run python scripts/validate_vault.py`;
 - report created, updated, skipped, and uncertain items;
 - request human review for new Knowledge claims and material Wiki changes;
 - do not commit or push unless the user explicitly asks.

@@ -4,10 +4,10 @@
 
 1. Replace every `YOUR-NAME` placeholder in `README.md`, `CHANGELOG.md`, and `.github/ISSUE_TEMPLATE/config.yml`.
 2. Review `LICENSE`, governance files, and issue labels for your project.
-3. Run `python3 scripts/validate_vault.py`.
+3. Run `uv run python scripts/validate_vault.py`.
 4. Review the complete Git history and staged diff for private information.
 5. Create an empty public GitHub repository without adding a README or license.
-6. Add it as the local repository's `origin` and push the `main` branch.
+6. Add it as the local repository's `origin` and push the `master` branch.
 7. In GitHub **Settings -> General**, enable **Template repository**.
 8. Optionally enable private vulnerability reporting and Discussions.
 

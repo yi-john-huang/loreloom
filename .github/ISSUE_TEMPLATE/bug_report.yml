@@ -1,0 +1,41 @@
+name: Bug report
+description: Report a reproducible framework, schema, or validator problem
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: Do not include personal vault content, credentials, or private source material.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal reproduction
+      description: Use synthetic notes or a link to a minimal public repository.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Framework version or commit
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validator output
+      description: Redact local paths and private content before pasting.
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I removed secrets, personal information, and restricted source content.
+          required: true

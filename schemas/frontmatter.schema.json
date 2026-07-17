@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/ai-first-obsidian-vault/frontmatter.schema.json",
+  "title": "AI-First Obsidian Vault frontmatter",
+  "type": "object",
+  "required": [
+    "type",
+    "title",
+    "status",
+    "created",
+    "updated",
+    "tags",
+    "aliases"
+  ],
+  "properties": {
+    "type": {
+      "enum": ["inbox", "source", "concept", "wiki", "moc", "project", "area", "daily"]
+    },
+    "title": {"type": "string", "minLength": 1},
+    "status": {
+      "enum": ["captured", "processing", "draft", "evergreen", "active", "on-hold", "completed", "archived"]
+    },
+    "created": {"type": "string", "format": "date"},
+    "updated": {"type": "string", "format": "date"},
+    "tags": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9/_-]*$"
+      }
+    },
+    "aliases": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "agent": {"type": "string", "minLength": 1},
+    "archived_at": {"type": "string", "format": "date"},
+    "archived_from": {"type": "string", "minLength": 1}
+  },
+  "allOf": [
+    {
+      "oneOf": [
+        {
+          "properties": {
+            "type": {"const": "inbox"},
+            "status": {"enum": ["captured", "processing", "archived"]},
+            "captured_from": {"enum": ["manual", "web", "email", "meeting", "chat", "file", "other"]}
+          },
+          "required": ["captured_from"]
+        },
+        {
+          "properties": {
+            "type": {"const": "source"},
+            "status": {"enum": ["captured", "processing", "archived"]},
+            "source_type": {"enum": ["article", "book", "documentation", "paper", "video", "podcast", "meeting", "personal-observation", "dataset", "other"]},
+            "source_url": {
+              "anyOf": [
+                {"type": "string", "format": "uri"},
+                {"const": ""}
+              ]
+            },
+            "author": {
+              "anyOf": [
+                {"type": "string"},
+                {"type": "array", "items": {"type": "string", "minLength": 1}}
+              ]
+            },
+            "published": {
+              "anyOf": [
+                {"type": "string", "format": "date"},
+                {"type": "null"}
+              ]
+            },
+            "captured": {"type": "string", "format": "date"},
+            "processed": {"type": "boolean"}
+          },
+          "required": ["source_type", "source_url", "author", "published", "captured", "processed"]
+        },
+        {
+          "properties": {
+            "type": {"const": "concept"},
+            "status": {"enum": ["draft", "evergreen", "archived"]},
+            "confidence": {"enum": ["low", "medium", "high"]},
+            "reviewed": {
+              "anyOf": [
+                {"type": "string", "format": "date"},
+                {"type": "null"}
+              ]
+            },
+            "sources": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {"type": "string", "minLength": 1}
+            }
+          },
+          "required": ["confidence", "reviewed", "sources"]
+        },
+        {
+          "properties": {
+            "type": {"const": "wiki"},
+            "status": {"enum": ["draft", "evergreen", "archived"]},
+            "generated": {"const": true},
+            "generated_at": {"type": "string", "format": "date"},
+            "generator": {"type": "string", "minLength": 1},
+            "inputs": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {"type": "string", "minLength": 1}
+            },
+            "review_status": {"enum": ["unreviewed", "reviewed", "needs-review"]}
+          },
+          "required": ["generated", "generated_at", "generator", "inputs", "review_status"]
+        },
+        {
+          "properties": {
+            "type": {"const": "moc"},
+            "status": {"enum": ["draft", "evergreen", "archived"]},
+            "scope": {"type": "string", "minLength": 1},
+            "curation": {"enum": ["human", "assisted", "generated"]}
+          },
+          "required": ["scope", "curation"]
+        },
+        {
+          "properties": {
+            "type": {"const": "project"},
+            "status": {"enum": ["active", "on-hold", "completed", "archived"]},
+            "outcome": {"type": "string", "minLength": 1},
+            "started": {"type": "string", "format": "date"},
+            "due": {
+              "anyOf": [
+                {"type": "string", "format": "date"},
+                {"type": "null"}
+              ]
+            },
+            "area": {
+              "anyOf": [
+                {"type": "string", "minLength": 1},
+                {"type": "null"}
+              ]
+            }
+          },
+          "required": ["outcome", "started", "due", "area"]
+        },
+        {
+          "properties": {
+            "type": {"const": "area"},
+            "status": {"enum": ["active", "on-hold", "archived"]},
+            "review_cycle": {"enum": ["weekly", "monthly", "quarterly", "yearly", "ad-hoc"]},
+            "owner": {"type": "string", "minLength": 1}
+          },
+          "required": ["review_cycle", "owner"]
+        },
+        {
+          "properties": {
+            "type": {"const": "daily"},
+            "status": {"enum": ["captured", "archived"]},
+            "date": {"type": "string", "format": "date"}
+          },
+          "required": ["date"]
+        }
+      ]
+    }
+  ],
+  "additionalProperties": true
+}

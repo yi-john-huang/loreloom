@@ -1,0 +1,34 @@
+# Obsidian per-device state
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/cache/
+.obsidian/plugins/*/data.json
+.trash/
+
+# Agent runtime state and secrets
+.agents/runs/
+.agents/cache/
+.env
+.env.*
+!.env.example
+*.secret
+*.secrets
+
+# Local/private material
+Private/
+private/
+*.private.md
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Python validation cache
+__pycache__/
+*.py[cod]
+.venv/
+venv/

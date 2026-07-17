@@ -1,0 +1,32 @@
+name: Feature request
+description: Propose a portable improvement to the framework
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user or agent workflow is difficult today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: Describe behavior, schema impact, and the human review boundary.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: principles
+    attributes:
+      label: Design checks
+      options:
+        - label: The change remains useful as plain Markdown without a required plugin.
+        - label: The change preserves source provenance and explicit human review.
+        - label: The change does not require personal data in the public framework.

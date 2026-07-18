@@ -45,5 +45,7 @@ venv/
 .codex/guidance/
 .codex/hooks.json
 .codex/hooks/
-.spec/
+.spec/*
+!.spec/steering/
+!.spec/steering/**
 # END sdd-mcp generated agent files

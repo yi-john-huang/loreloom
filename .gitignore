@@ -32,3 +32,18 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+
+# BEGIN sdd-mcp generated agent files
+.agents/skills/sdd-*/
+.agents/skills/simple-task/
+.codex/agents/architect.toml
+.codex/agents/implementer.toml
+.codex/agents/planner.toml
+.codex/agents/reviewer.toml
+.codex/agents/security-auditor.toml
+.codex/agents/tdd-guide.toml
+.codex/guidance/
+.codex/hooks.json
+.codex/hooks/
+.spec/
+# END sdd-mcp generated agent files

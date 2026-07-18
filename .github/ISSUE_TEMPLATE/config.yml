@@ -1,5 +1,5 @@
 blank_issues_enabled: false
 contact_links:
   - name: Private security or privacy report
-    url: https://github.com/YOUR-NAME/sourceweave/security/advisories/new
+    url: https://github.com/yi-john-huang/loreloom/security/advisories/new
     about: Report vulnerabilities or accidental disclosure privately.

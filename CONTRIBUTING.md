@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for improving the Sourceweave framework.
+Thank you for improving the Loreloom framework.
 
 ## Scope
 

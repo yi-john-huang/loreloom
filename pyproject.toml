@@ -1,5 +1,5 @@
 [project]
-name = "sourceweave"
+name = "loreloom"
 version = "0.1.0"
 description = "An AI-first Obsidian vault framework for traceable, multi-topic knowledge"
 readme = "README.md"

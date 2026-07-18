@@ -2,22 +2,22 @@
 
 ## Prepare the public framework repository
 
-1. Replace every `YOUR-NAME` placeholder in `README.md`, `CHANGELOG.md`, and `.github/ISSUE_TEMPLATE/config.yml`.
-2. Review `LICENSE`, governance files, and issue labels for your project.
+1. Confirm the public repository URLs point to `yi-john-huang/loreloom`.
+2. Review `LICENSE`, governance files, and issue labels for the project.
 3. Run `uv run python scripts/validate_vault.py`.
 4. Review the complete Git history and staged diff for private information.
-5. Create an empty public GitHub repository without adding a README or license.
+5. Create the empty public GitHub repository without adding a README or license.
 6. Add it as the local repository's `origin` and push the `master` branch.
 7. In GitHub **Settings -> General**, enable **Template repository**.
 8. Optionally enable private vulnerability reporting and Discussions.
 
-This scaffold intentionally leaves the remote unconfigured. Publishing changes external state and should be a separate, deliberate step.
+Publishing changes external state and should remain a separate, deliberate step when someone reuses the scaffold under another account.
 
 ## Create a personal vault
 
 On the public repository page, select **Use this template -> Create a new repository**. Choose private visibility and a name unrelated to the public framework if desired. A template-created repository starts with independent history and is safer for personal use than a fork connected to the public contribution graph.
 
-Clone the private repository and open its root as an Obsidian vault. Keep its remote private. Delete the example subdirectories after onboarding, then personalize `MOCs/Home.md` and the ownership rules in `AGENTS.md`.
+Clone the private repository and open its root as an Obsidian vault. Keep its remote private. After onboarding, replace the example links in `MOCs/Home.md`, delete the example subdirectories, run validation, and then personalize the ownership rules in `AGENTS.md`.
 
 ## Contribute framework improvements later
 
@@ -33,7 +33,7 @@ Before publishing a contribution:
 
 ## Release checklist
 
-- [ ] All `YOUR-NAME` placeholders replaced.
+- [ ] Public repository URLs point to the intended owner and repository.
 - [ ] Validation passes locally and in GitHub Actions.
 - [ ] Default branch protection and required checks configured.
 - [ ] Repository description and topics added.

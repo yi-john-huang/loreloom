@@ -1,0 +1,4 @@
+interface:
+  display_name: "Distill Vault Sources"
+  short_description: "Create cited atomic Knowledge drafts"
+  default_prompt: "Use $distill-vault-sources to turn the selected Sources into cited Knowledge drafts for review."

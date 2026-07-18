@@ -1,5 +1,7 @@
 # Getting started
 
+For a complete, task-oriented walkthrough from template repository to daily use, see [Build your personal vault](BUILD_YOUR_VAULT.md). This page summarizes the most important setup decisions.
+
 ## 1. Create a safe personal copy
 
 For personal use, create a private repository from the GitHub template rather than forking the public framework. A template copy has independent history and no pull-request relationship that might expose notes upstream.

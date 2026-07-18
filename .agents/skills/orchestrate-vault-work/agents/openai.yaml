@@ -1,0 +1,4 @@
+interface:
+  display_name: "Orchestrate Vault Work"
+  short_description: "Route vault work across bounded specialist agents"
+  default_prompt: "Use $orchestrate-vault-work to divide this vault task into safe, independent agent assignments and consolidate the results."

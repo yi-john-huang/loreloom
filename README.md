@@ -1,4 +1,4 @@
-# Sourceweave
+# Loreloom
 
 An AI-first Obsidian vault framework that weaves captured sources into reviewed knowledge, generated wiki pages, and a connected multi-topic graph.
 
@@ -31,6 +31,8 @@ Projects / Areas (action and responsibility)
 - **Human-reviewed truth.** `Knowledge/` is canonical. AI may draft there, but a human changes `status` to `evergreen`.
 - **Generated pages are replaceable.** `Wiki/` pages declare their inputs and can be rebuilt when models or prompts improve.
 - **Agents are governed.** `AGENTS.md` and `.agents/policies/` define what an agent may read, create, or change.
+- **Specialists are bounded.** Project agents split read-heavy work by role while one orchestrator owns decisions and writes.
+- **Skills are reusable.** Repo-scoped skills route capture, distillation, synthesis, auditing, and orchestration consistently.
 - **Plain Markdown wins.** The vault remains usable without a plugin, database, or hosted service.
 
 ## Repository map
@@ -48,11 +50,14 @@ Projects / Areas (action and responsibility)
 | `Archive/` | Inactive material | Shared |
 | `Templates/` | Note templates | Maintainers |
 | `.agents/` | Prompts, policies, and workflows | Maintainers |
+| `.codex/` | Project-scoped agent and orchestration configuration | Maintainers |
 | `schemas/` | Machine-readable frontmatter contract | Maintainers |
 
 See [Architecture](docs/ARCHITECTURE.md) for the full lifecycle.
 
 ## Start your own vault
+
+For the complete onboarding workflow, follow [Build your personal vault](docs/BUILD_YOUR_VAULT.md).
 
 ### Recommended: GitHub template
 
@@ -60,21 +65,23 @@ See [Architecture](docs/ARCHITECTURE.md) for the full lifecycle.
 2. Choose **Use this template**, create a **private** repository, and do not include every branch.
 3. Clone the new repository to a folder available to your devices.
 4. In Obsidian, choose **Open folder as vault** and select the repository root.
-5. Delete the `Examples/` folders when you no longer need them.
+5. Replace the example links in `MOCs/Home.md`, delete the `Examples/` folders when you no longer need them, and run validation.
 6. Review and personalize `AGENTS.md`, then run the first prompt in [.agents/prompts/00-bootstrap-vault.md](.agents/prompts/00-bootstrap-vault.md).
 
 Use a fork when contributing improvements back to this public framework. Use a template-created private repository for personal notes; this avoids accidentally proposing private content to the public project.
 
-### Local setup
+### Framework development setup
 
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/) first. It manages the Python version and validation environment; no manual virtual environment or pip command is needed.
 
 ```sh
-git clone https://github.com/YOUR-NAME/sourceweave.git my-vault
-cd my-vault
+git clone https://github.com/yi-john-huang/loreloom.git
+cd loreloom
 uv sync --locked --dev
 uv run python scripts/validate_vault.py
 ```
+
+This checkout keeps the public Loreloom repository as `origin`; use it only for framework work and synthetic examples. For personal notes, create a private repository with the template workflow above.
 
 No Obsidian community plugin is required. Optional plugins are listed in [Getting Started](docs/GETTING_STARTED.md).
 
@@ -105,6 +112,7 @@ Run:
 
 ```sh
 uv run python scripts/validate_vault.py
+uv run python -m unittest discover -s tests -v
 ```
 
 The validator checks:
@@ -115,7 +123,9 @@ The validator checks:
 - semantic rules such as reviewed evergreen Concepts and declared Wiki inputs;
 - repository hygiene such as ignored private files.
 
-GitHub Actions runs the same check on pushes and pull requests.
+For agent-authored changes, `scripts/validate_change.py` additionally compares the diff with an immutable pre-task commit and filesystem snapshot, then enforces exact output scope, protected paths, Source immutability, review and archive gates, and preserved Wiki human blocks. Gated approvals require a short-lived, path-specific receipt created by the owner under protected Git metadata.
+
+GitHub Actions runs the vault validator and adversarial guardrail tests on pushes and pull requests.
 
 ### Python toolchain
 
@@ -135,11 +145,13 @@ GitHub Actions runs the same check on pushes and pull requests.
 
 ## Documentation
 
+- [Build your personal vault](docs/BUILD_YOUR_VAULT.md)
 - [Getting started](docs/GETTING_STARTED.md)
 - [Architecture and lifecycle](docs/ARCHITECTURE.md)
 - [Conventions](docs/CONVENTIONS.md)
 - [Frontmatter schemas](docs/FRONTMATTER.md)
 - [Agent workflows](docs/AGENT_WORKFLOWS.md)
+- [Multi-agent and model routing](docs/MULTI_AGENT.md)
 - [Privacy and threat model](docs/PRIVACY.md)
 - [Publishing and template setup](docs/PUBLISHING.md)
 - [Contributing](CONTRIBUTING.md)

@@ -12,6 +12,8 @@ Agent workflows are small, reviewable transformations. They are not an unattende
 | Wiki builder | Reviewed Knowledge | Generated Wiki | Review material synthesis |
 | Reviewer | All Markdown | Report by default | Before fixes |
 
+These logical roles map to project-scoped Codex agents in `.codex/agents/`. Use `$orchestrate-vault-work` when two or more independent roles materially improve the result; otherwise run the workflow directly.
+
 Roles are prompt boundaries, not necessarily separate processes or models.
 
 ## Standard transaction
@@ -30,6 +32,8 @@ Every mutating workflow follows:
 - [`source-to-knowledge.md`](../.agents/workflows/source-to-knowledge.md): capture to cited concept drafts.
 - [`regenerate-wiki.md`](../.agents/workflows/regenerate-wiki.md): rebuild a declared synthesis while preserving human blocks.
 - [`weekly-maintenance.md`](../.agents/workflows/weekly-maintenance.md): report and optionally repair vault health.
+
+The corresponding discoverable skills are `$triage-vault-inbox`, `$distill-vault-sources`, `$connect-vault-notes`, `$regenerate-vault-wiki`, and `$audit-vault-health`.
 
 ## Safety properties
 

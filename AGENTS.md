@@ -11,6 +11,29 @@ Before editing notes, read:
 3. `docs/FRONTMATTER.md`
 4. the workflow named by the user, if any
 
+## Delegation and skill routing
+
+Handle simple, tightly scoped work directly. For a request with at least two independent read-heavy tracks, multiple lifecycle layers, or an explicit parallel-work request, use `$orchestrate-vault-work` and the project agents under `.codex/agents/`.
+
+- Keep the root agent responsible for scope, user communication, decisions, writes, validation, and the final response.
+- Keep every custom subagent read-only. Assign exact, disjoint paths and a required return format.
+- Do not run this workflow under a live permission override that broadens child access. Verify the effective child sandbox; treat the TOML sandbox as a default plus a no-write instruction, because parent runtime overrides can take precedence.
+- Spawn no more than three subagents concurrently; project configuration fixes nesting at one level.
+- Keep the root agent as the only writer.
+- Use `vault-worker` for an implementation-ready proposal on one isolated path set; the root applies the accepted diff.
+- Reconcile factual disagreements against Sources. Agent agreement is not evidence.
+- Never substitute models silently. A disclosed fallback is acceptable only for low-risk, read-only analysis. If the configured Sol reviewer or synthesizer is unavailable for a material change, pause for owner direction or require explicit human review and report incomplete coverage.
+- Never create, modify, or replace a gated approval receipt. The owner or trusted approval UI must create it under protected Git metadata after reviewing the exact final diff.
+
+Route repeatable work through the narrowest matching repository skill:
+
+- `$triage-vault-inbox` for unprocessed Inbox captures;
+- `$distill-vault-sources` for cited Concept drafts;
+- `$connect-vault-notes` for bounded cross-topic linking;
+- `$regenerate-vault-wiki` for generated synthesis;
+- `$audit-vault-health` for read-only health reviews;
+- `$orchestrate-vault-work` for complex multi-agent coordination.
+
 ## Authority by directory
 
 - `Sources/`: read-only evidence. Never rewrite, summarize in place, rename, or delete a source unless the user explicitly identifies the exact file and action.
@@ -53,6 +76,9 @@ While making changes:
 After making changes:
 
 - run `uv run python scripts/validate_vault.py`;
+- before a multi-agent mutation, record the immutable base commit and run `scripts/validate_change.py --check-clean --base <40-character-commit> --snapshot-file <absolute-temp-path>` with one exact `--allow` per authorized output path;
+- after it, run `uv run python scripts/validate_change.py --base <40-character-commit> --snapshot-file <same-path>` with one exact `--allow` per authorized output path;
+- request a read-only `vault-reviewer` pass for material multi-agent changes;
 - report created, updated, skipped, and uncertain items;
 - request human review for new Knowledge claims and material Wiki changes;
 - do not commit or push unless the user explicitly asks.

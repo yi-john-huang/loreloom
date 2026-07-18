@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.invalid/sourceweave/frontmatter.schema.json",
-  "title": "Sourceweave frontmatter",
+  "$id": "https://example.invalid/loreloom/frontmatter.schema.json",
+  "title": "Loreloom frontmatter",
   "type": "object",
   "required": [
     "type",

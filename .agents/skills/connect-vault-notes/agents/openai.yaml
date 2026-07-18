@@ -1,0 +1,4 @@
+interface:
+  display_name: "Connect Vault Notes"
+  short_description: "Add meaningful cross-topic links safely"
+  default_prompt: "Use $connect-vault-notes to find and add high-value relationships in the selected vault notes."

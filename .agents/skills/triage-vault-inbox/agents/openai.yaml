@@ -1,0 +1,4 @@
+interface:
+  display_name: "Triage Vault Inbox"
+  short_description: "Classify captures without destructive changes"
+  default_prompt: "Use $triage-vault-inbox to classify the selected Inbox notes and propose safe next steps."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Audit Vault Health"
+  short_description: "Review links metadata provenance and drift"
+  default_prompt: "Use $audit-vault-health to perform a read-only health audit of this vault and rank the repairs."

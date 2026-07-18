@@ -1,0 +1,4 @@
+interface:
+  display_name: "Regenerate Vault Wiki"
+  short_description: "Rebuild traceable generated Wiki pages"
+  default_prompt: "Use $regenerate-vault-wiki to rebuild the selected Wiki page from its declared Knowledge inputs."

@@ -6,7 +6,7 @@
 - **Version:** 0.1.0
 - **Product type:** Public knowledge-vault framework and GitHub template
 
-Loreloom is an AI-first, model-agnostic Obsidian vault framework that turns captured material into traceable knowledge using plain Markdown, YAML frontmatter, wikilinks, review gates, and bounded agent workflows. It is a repository framework—not a web application, hosted service, or database.
+Loreloom is a plug-and-play, model-agnostic Obsidian vault framework and GitHub template. A private template copy ships portable Obsidian core settings, a read-only readiness doctor, plain Markdown, YAML frontmatter, wikilinks, review gates, and bounded root-agent workflows. It is not a web application, hosted service, plugin, or database.
 
 ## Vision
 
@@ -27,7 +27,7 @@ Owner Asset / absolute HTTP(S) URL / Inbox / Daily
 Source processing (editable intake)
                          |
                          v
-Owner review (direct or signed source_review)
+Owner review (direct; signed source_review is advanced)
                          |
                          v
 Current-byte Asset revalidation
@@ -50,11 +50,11 @@ Folders express lifecycle and authority. Links, tags, and Maps of Content expres
 1. **Fast, untrusted capture** — `Inbox/` and `Daily/` accept incomplete observations without treating them as durable truth.
 2. **Local or URL evidence intake** — owners supply exact Assets or absolute HTTP(S) URLs; URLs are recorded without fetching or implying reachability, freshness, or extraction.
 3. **Evidence preservation** — Sources remain editable while processing, then become faithful append-only records after owner review.
-4. **Owner-controlled review** — Source review is a direct owner edit or an exact signed `source_review`; current Asset bytes are revalidated before distillation.
+4. **Owner-controlled review** — direct owner Source review is the default; exact signed `source_review` is an advanced alternative. Current Asset bytes are revalidated before distillation.
 5. **Canonical knowledge** — `Knowledge/` contains one durable concept per note with traceable sources and explicit confidence; the owner reviews draft claims and citations.
 6. **Regenerable synthesis** — `Wiki/` pages declare their Knowledge inputs, generation metadata, and review state while preserving marked human-owned blocks.
 7. **Connected navigation** — wikilinks, lowercase hierarchical tags, and curated `MOCs/` connect subjects without topic-folder duplication.
-8. **Governed, portable automation** — policies, exact scopes, validators, human gates, UTF-8 Markdown, and YAML keep agent work bounded and the vault usable without a hosted service.
+8. **Plug-and-play, portable automation** — a read-only doctor, committed Obsidian core settings, model-neutral root workflow, policies, exact scopes, validators, human gates, UTF-8 Markdown, and YAML make first use deterministic without a hosted service.
 
 ## Public Framework and Private Vault Boundary
 
@@ -96,3 +96,4 @@ Product quality is measured through repository invariants rather than usage tele
 - when the guarded change workflow is used, protected human content and review-state changes require explicit approval and reviewable diffs;
 - the public framework remains free of private or restricted material;
 - a user can open and navigate the vault as plain Markdown without required plugins.
+- a private template copy can reach `Core readiness: READY`, open with portable Obsidian defaults, and complete one Asset-to-MOC cycle without custom agents or community plugins.

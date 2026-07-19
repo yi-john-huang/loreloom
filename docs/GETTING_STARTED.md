@@ -1,56 +1,33 @@
 # Getting started
 
-For a complete, task-oriented walkthrough from template repository to daily use, see [Build your personal vault](BUILD_YOUR_VAULT.md). This page summarizes the most important setup decisions.
+Use [Build your personal vault](BUILD_YOUR_VAULT.md) for the only complete tutorial. This page is a short entry checklist. If you are still choosing a tool, start with [How Loreloom compares](../README.md#how-loreloom-compares).
 
-## 1. Create a safe personal copy
+## Core setup
 
-For personal use, create a private repository from the GitHub template rather than forking the public framework. A template copy has independent history and no pull-request relationship that might expose notes upstream.
+- [ ] Create a **private** repository with GitHub's **Use this template** action.
+- [ ] Clone it by HTTPS or SSH and enter its root.
+- [ ] Install [Git](https://git-scm.com/downloads) and [uv](https://docs.astral.sh/uv/getting-started/installation/) from their official installers.
+- [ ] Run `git --version` and `uv --version`.
+- [ ] Run `uv run --locked python scripts/doctor_vault.py`.
+- [ ] Continue only when the final line is `Core readiness: READY`.
+- [ ] Open the repository root as an Obsidian vault; the portable baseline is already committed.
+- [ ] Follow [the deterministic first evidence cycle](BUILD_YOUR_VAULT.md#4-complete-the-first-evidence-cycle).
 
-Open the repository root as an Obsidian vault. Keep the framework documentation until the workflow feels familiar.
+Portable Obsidian settings are already committed: attachments use `Assets/`, link renames update automatically, and Properties, Templates, and Daily Notes are enabled. No community plugin is required.
 
-## 2. Choose sync separately
+## First successful cycle
 
-Git provides history and review; it is not a real-time sync protocol. Use one primary sync system. If the vault is also inside a cloud-synced folder, avoid editing the same note simultaneously on multiple devices and wait for file sync before Git operations.
+Complete this sequence before adding optional branches:
 
-Never configure two file-sync services for the same vault. Test restore procedures before trusting any setup.
+1. the deterministic `Assets/First cycle.txt` with its expected SHA-256;
+2. one faithful processing Source that passes validation;
+3. direct owner Source review and current-byte validation;
+4. one cited draft Concept created manually or by the root agent;
+5. the exact Technology MOC link;
+6. a passing final validator and an understood `git status --short`.
 
-## 3. Configure Obsidian
+## Add later
 
-The framework works with core Obsidian features. Suggested settings:
+After the first cycle works, consider Inbox/Daily capture, URL-only intake, generated Wiki pages, sync, example deletion, and custom agents. The root workflow is the default. Multi-agent execution, detached validation, signed review, and receipts are advanced POSIX/WSL features described in [Advanced multi-agent execution](MULTI_AGENT.md).
 
-- enable automatic link updates on rename;
-- use `Assets/` as the attachment folder;
-- enable Properties view for frontmatter editing;
-- enable Templates and point it at `Templates/`;
-- enable Daily Notes and point it at `Daily/` with format `YYYY-MM-DD`.
-
-Optional community plugins can improve templating or queries, but the committed notes should remain readable without them. Audit every plugin because it runs with access to vault content.
-
-## 4. Personalize without creating topic silos
-
-Edit `MOCs/Home.md` and add a few subjects that matter to you. Use tags and links for topics; keep the top-level lifecycle folders stable.
-
-Create Projects only for outcomes with an end condition. Create Areas for ongoing responsibilities. A subject such as “AWS” usually belongs in a MOC, not a Project or Area by default.
-
-## 5. Capture the first evidence and Source
-
-1. Choose an owner-controlled local Asset, an absolute HTTP(S) URL, or both. Place local files under `Assets/`; URLs are recorded without fetching or implying reachability, freshness, or extraction.
-2. For manual intake, create a Source from `Templates/Source.md`; bind each exact Asset path and streaming SHA-256 or record the HTTP(S) URL. See [[Assets/README|Assets]] for the hash command and space-safe link forms.
-3. For semi-automatic intake, use `$capture-vault-source` on the exact Asset or URL. It creates only an editable `status: processing`, `review_status: needs-review`, `reviewed: null` Source and overwrites nothing.
-4. Verify provenance, current hashes, rights, faithful summary, and machine-assisted limitations. Review directly or initiate an exact signed `source_review`; agents never attest review.
-5. Immediately run `uv run python scripts/validate_vault.py`; any unsafe, missing, unreadable, or hash-drifted bound Asset blocks distillation.
-6. Run `$distill-vault-sources` only on the exact reviewed, revalidated Source path, then review every draft claim and citation before optional evergreen promotion.
-
-## 6. Introduce Codex gradually
-
-Begin with read-only audits. Then allow creation of draft notes. Allow updates to canonical Knowledge only after you are comfortable reviewing diffs.
-
-The repository's `AGENTS.md` is the standing instruction set. Prompts in `.agents/prompts/` are task-specific contracts. Workflows in `.agents/workflows/` describe repeatable sequences and checkpoints.
-
-## 7. Remove examples
-
-After experimenting, remove only the `Examples/` subdirectories and update `MOCs/Home.md`. Keep directory `README.md` files, templates, schemas, and agent policies.
-
-## 8. Publish the framework, not your vault
-
-If you improve the framework, copy the generic change to a clean branch of the public repository. Never merge personal vault history into the public project. Before any push, inspect staged files for personal names, local filesystem paths, source documents, secrets, and `.obsidian` plugin data.
+For optional read-only personalization, use only [.agents/prompts/00-bootstrap-vault.md](../.agents/prompts/00-bootstrap-vault.md).

@@ -13,17 +13,18 @@ Before editing notes, read:
 
 ## Delegation and skill routing
 
-Handle simple, tightly scoped work directly. For a request with at least two independent read-heavy tracks, multiple lifecycle layers, or an explicit parallel-work request, use `$orchestrate-vault-work` and the project agents under `.codex/agents/`.
+Run bounded lifecycle work sequentially in the root agent by default. The root owns scope, user communication, decisions, writes, validation, and the final response.
 
-- Keep the root agent responsible for scope, user communication, decisions, writes, validation, and the final response.
-- Keep every custom subagent read-only. Assign exact, disjoint paths and a required return format.
-- Do not run this workflow under a live permission override that broadens child access. Verify the effective child sandbox; treat the TOML sandbox as a default plus a no-write instruction, because parent runtime overrides can take precedence.
-- Spawn no more than three subagents concurrently; project configuration fixes nesting at one level.
-- Keep the root agent as the only writer.
-- Use `vault-worker` for an implementation-ready proposal on one isolated path set; the root applies the accepted diff.
-- Reconcile factual disagreements against Sources. Agent agreement is not evidence.
-- Never substitute models silently. A disclosed fallback is acceptable only for low-risk, read-only analysis. If the configured Sol reviewer or synthesizer is unavailable for a material change, pause for owner direction or require explicit human review and report incomplete coverage.
-- Never create, modify, or replace a gated approval receipt. The owner or trusted approval UI must create it under protected Git metadata after reviewing the exact final diff.
+Use `$orchestrate-vault-work` only when the owner explicitly requests parallel or custom-agent execution, or explicitly accepts advanced delegation after the root explains the concrete benefit. When advanced delegation is enabled:
+
+- keep every custom subagent read-only with exact, disjoint paths and a required return format;
+- verify that no live permission override broadens child access;
+- spawn no more than three subagents concurrently and prohibit recursive delegation;
+- keep the root as the only writer and apply accepted proposals serially;
+- reconcile factual disagreements against Sources; agent agreement is not evidence;
+- never create, modify, or replace a gated approval receipt; only the owner or trusted approval UI may create one after reviewing the exact final diff.
+
+If a requested custom role is unavailable, do not substitute another model or role silently. The root may continue sequentially for extraction and proposal work after disclosing reduced specialist coverage. Material synthesis or independent review without the requested specialist requires direct owner review and an explicit incomplete-specialist-coverage report.
 
 Route repeatable work through the narrowest matching repository skill:
 
@@ -33,7 +34,7 @@ Route repeatable work through the narrowest matching repository skill:
 - `$connect-vault-notes` for bounded cross-topic linking;
 - `$regenerate-vault-wiki` for generated synthesis;
 - `$audit-vault-health` for read-only health reviews;
-- `$orchestrate-vault-work` for complex multi-agent coordination.
+- `$orchestrate-vault-work` only for owner-approved advanced multi-agent coordination.
 
 ## Authority by directory
 
@@ -77,11 +78,11 @@ While making changes:
 
 After making changes:
 
-- run `uv run python scripts/validate_vault.py`;
-- before a multi-agent mutation, record the immutable base commit and run `uv run python -I scripts/validate_change.py --check-clean --base <40-character-commit> --snapshot-file <absolute-temp-path>` with one exact `--allow` per authorized output path;
-- after it, run every final with `uv run python -I scripts/validate_change.py --target-root <candidate-vault-root> --base <40-character-commit> --snapshot-file <same-path>` from a separate clean detached worktree at the immutable base, with one exact `--allow` per changed path;
-- an owner may review a processing Source directly or authorize an agent-assisted/trusted-UI transition with matching exact `--allow PATH` and signed `--allow-source-review PATH`; immediately revalidate bound Assets before distillation;
-- request a read-only `vault-reviewer` pass for material multi-agent changes;
+- run `uv run --locked python scripts/validate_vault.py`;
+- for an owner-approved multi-agent mutation, record the immutable base commit and run `uv run python -I scripts/validate_change.py --check-clean --base <40-character-commit> --snapshot-file <absolute-temp-path>` with one exact `--allow` per authorized output path;
+- after a multi-agent mutation, run every final with `uv run python -I scripts/validate_change.py --target-root <candidate-vault-root> --base <40-character-commit> --snapshot-file <same-path>` from a separate clean detached worktree at the immutable base, with one exact `--allow` per changed path;
+- an owner may review a processing Source directly; the advanced agent-assisted/trusted-UI route requires matching exact `--allow PATH` and signed `--allow-source-review PATH`. Revalidate bound Assets immediately after either route and before distillation;
+- request a read-only `vault-reviewer` pass for material multi-agent changes when that role is available; otherwise require direct owner review and report incomplete specialist coverage;
 - report created, updated, skipped, and uncertain items;
 - request human review for new Knowledge claims and material Wiki changes;
 - do not commit or push unless the user explicitly asks.

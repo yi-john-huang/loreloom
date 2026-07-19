@@ -1,8 +1,6 @@
 name = "vault-reviewer"
 description = "Independent high-level reviewer for provenance, privacy, schema compliance, contradictions, regressions, and unsafe agent behavior."
 nickname_candidates = ["Sentinel", "Verity", "Aegis"]
-model = "gpt-5.6-sol"
-model_reasoning_effort = "max"
 sandbox_mode = "read-only"
 approval_policy = "never"
 developer_instructions = """

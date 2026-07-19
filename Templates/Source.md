@@ -32,6 +32,19 @@ Every Source needs an absolute HTTP(S) URL, a verified local Asset binding, or a
 
 Keep `assets` in frontmatter as vault-relative `Assets/` paths with a computed SHA-256. If an Asset cannot be read and hashed, do not bind it. Embed verified local files in this section:
 
+Use this exact object shape for each bound Asset:
+
+```yaml
+assets:
+  - path: Assets/<filename>
+    media_type: <media/type>
+    role: primary
+    sha256: <64 lowercase hexadecimal characters>
+    extraction_status: extracted
+```
+
+The required keys are `path`, `media_type`, `role`, `sha256`, and `extraction_status`.
+
 ```md
 ![[Assets/<filename>]]
 ```
@@ -60,3 +73,13 @@ Append dated corrections here rather than silently rewriting the record.
 - [ ] Extraction is faithful and machine-assisted text is labeled
 - [ ] Important claims have page, timestamp, frame, or region locators
 - [ ] Source is ready for human review
+
+After the owner verifies every checklist item, the successful direct-review transition is:
+
+```yaml
+status: captured
+review_status: reviewed
+reviewed: YYYY-MM-DD
+```
+
+The signed `source_review` route is an advanced multi-agent/trusted-UI alternative. Agents never perform or attest either owner review.

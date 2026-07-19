@@ -33,3 +33,34 @@ jobs:
 
       - name: Test change guardrails
         run: uv run python -m unittest discover -s tests -v
+
+  core-portability:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python: ["3.11", "3.13"]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.29"
+          enable-cache: true
+
+      - name: Install Python
+        run: uv python install ${{ matrix.python }}
+
+      - name: Remove public framework origin
+        run: git remote remove origin
+
+      - name: Check core readiness
+        run: uv run --locked --python ${{ matrix.python }} python scripts/doctor_vault.py
+
+      - name: Test portable core
+        run: uv run --locked --python ${{ matrix.python }} python -m unittest -v tests.test_doctor_vault tests.test_validate_vault

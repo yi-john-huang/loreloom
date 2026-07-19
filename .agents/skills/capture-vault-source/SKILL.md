@@ -14,8 +14,8 @@ description: Create editable Loreloom Source notes from exact local Assets or UR
 5. Run read-only proposal mode unless the request already authorizes the exact Source outputs. Preserve user metadata; apply the workflow's deterministic defaults without guessing semantic source types.
 6. Read only exact existing local Assets. Record `media_type`, SHA-256, extraction status, provenance, rights, locators, and machine-assisted limitations. Record URLs without fetching them.
 7. If writing is authorized, create only new `status: processing`, `review_status: needs-review`, `reviewed: null`, `agent: codex` Source notes. Never rewrite, regenerate, move, rename, delete, or overwrite an existing Source or Asset.
-8. Run `uv run python scripts/validate_vault.py` after a write. For mutating agent work, the root writer declares exact paths and follows the change-validator protocol; agents never create or alter approval receipts.
-9. Hand off the exact Source path, fields to verify, Asset hash or URL/Inbox provenance result, machine-assisted limitations, validator result, and owner-only review transition. The owner either edits the Source directly or authorizes a signed exact `source_review`; agents never attest review. Do not create Knowledge, Wiki, MOC, Project, Area, or Daily notes.
+8. Run `uv run --locked python scripts/validate_vault.py` after a write. Only an owner-approved multi-agent mutation uses the advanced change-validator and approval-receipt protocol; agents never create or alter receipts.
+9. Hand off the exact Source path, fields to verify, Asset hash or URL/Inbox provenance result, machine-assisted limitations, validator result, and owner-only review transition. Direct owner edit is the default; signed exact `source_review` is an advanced alternative. Agents never attest review. Do not create Knowledge, Wiki, MOC, Project, Area, or Daily notes.
 
 ## Required output contract
 

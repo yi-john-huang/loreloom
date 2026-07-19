@@ -10,14 +10,12 @@ description: Perform a read-only Loreloom health audit covering schema errors, b
 1. Read `AGENTS.md`, `.agents/policies/vault-policy.md`, and `.agents/workflows/weekly-maintenance.md`.
 2. Run `uv run python scripts/validate_vault.py` and preserve its objective failures separately from editorial judgment.
 3. Define the requested date window or vault slice.
-4. For broad audits, delegate disjoint read-only dimensions to at most three agents:
-   - `source-reader` for provenance and unprocessed capture;
-   - `vault-architect` for duplication, orphaning, and lifecycle drift;
-   - `vault-reviewer` for privacy, contradictions, generated-page drift, and policy violations.
-5. Consolidate exact-path findings, remove duplicates, and rank by severity, confidence, repair value, and risk.
-6. For asset-first vaults, inspect `Assets/` excluding `Assets/README.md` and report unreferenced files, duplicate hashes, hash drift, unavailable extraction, missing Source bindings, and reviewed Sources whose declared Assets are missing. Do not move, delete, or rewrite assets during the report pass.
-7. Recommend at most five actions. Do not implement repairs during the audit pass.
-8. Require exact approval for a second repair pass, especially promotion, archive, move, rename, deletion, commit, or push.
+4. Audit every requested dimension sequentially in the root agent and consolidate exact-path findings.
+5. Use `$orchestrate-vault-work` only after explicit owner opt-in when a broad audit materially benefits from disjoint read-only provenance, architecture, or privacy review.
+6. Remove duplicate findings and rank by severity, confidence, repair value, and risk.
+7. For asset-first vaults, inspect `Assets/` excluding `Assets/README.md` and report unreferenced files, duplicate hashes, hash drift, unavailable extraction, missing Source bindings, and reviewed Sources whose declared Assets are missing. Do not move, delete, or rewrite assets during the report pass.
+8. Recommend at most five actions. Do not implement repairs during the audit pass.
+9. Require exact approval for a second repair pass, especially promotion, archive, move, rename, deletion, commit, or push.
 
 ## Output
 

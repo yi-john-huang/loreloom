@@ -37,7 +37,7 @@ Concept draft -> owner claim/citation review -> optional evergreen
 - **Human-reviewed truth.** `Knowledge/` is canonical. AI may draft there, but a human changes `status` to `evergreen`.
 - **Generated pages are replaceable.** `Wiki/` pages declare their inputs and can be rebuilt when models or prompts improve.
 - **Agents are governed.** `AGENTS.md` and `.agents/policies/` define what an agent may read, create, or change.
-- **Specialists are bounded.** Project agents split read-heavy work by role while one orchestrator owns decisions and writes.
+- **One root by default.** The active Codex session runs bounded skills sequentially; custom read-only agents are an owner-approved advanced option.
 - **Skills are reusable.** Repo-scoped skills route capture, distillation, synthesis, auditing, and orchestration consistently.
 - **Asset or URL intake.** Owners may supply local files in `Assets/` or record absolute HTTP(S) URLs; `$capture-vault-source` creates editable processing Sources without fetching, copying, or overwriting resources.
 - **Plain Markdown wins.** The vault remains usable without a plugin, database, or hosted service.
@@ -63,73 +63,74 @@ Concept draft -> owner claim/citation review -> optional evergreen
 
 See [Architecture](docs/ARCHITECTURE.md) for the full lifecycle.
 
+## How Loreloom compares
+
+[Andrej Karpathy's LLM Wiki gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) is an intentionally abstract design pattern, Loreloom is the repository-and-vault framework documented here, and [Karpathy LLM Wiki](https://github.com/green-dalii/obsidian-llm-wiki) is Greener-Dalii's third-party Obsidian plugin inspired by the gist.
+
+| Dimension | Karpathy's LLM Wiki gist | Loreloom | Karpathy LLM Wiki plugin |
+|---|---|---|---|
+| Form | An intentionally abstract idea file/prompt whose user and agent design the implementation | A GitHub template and Obsidian vault with schemas, validators, policies, skills, and portable core settings | A third-party Obsidian community plugin that implements an AI-generated wiki |
+| First setup | Paste the gist into an agent and collaborate on structure and tooling | Create a private template copy, install Git and `uv`, run the read-only doctor, then open the repository root in Obsidian | Install and enable the plugin, then configure a supported cloud or local LLM provider |
+| Knowledge boundary | Raw sources are immutable; the LLM owns and maintains the derived wiki; human review policy is left to the implementation | Reviewed `Knowledge/` notes are canonical; agents may draft them, while `Wiki/` is regenerable synthesis from declared inputs | Original vault notes are not modified; generated pages live under `wiki/`, and `reviewed: true` protects a generated page from overwrite |
+| AI interface | Any external agent chosen by the user | The external root Codex session and terminal validators; no in-Obsidian AI command or query UI | Obsidian command-palette and side-panel workflows for ingest, query, lint, and maintenance |
+| Retrieval | `index.md` first, with optional search such as `qmd`; no retrieval implementation is required by the gist | Wikilinks, MOCs, declared Wiki inputs, and ordinary file search; no required embedding database or built-in query service | Lexical/LLM seed selection followed by Personalized PageRank over the generated wiki-link graph; no embedding index |
+| Governance | A co-evolved schema/instruction file; enforcement depends on the implementation the user builds | Frontmatter schema, provenance, Asset hashes, Source review, human promotion gates, Git review, and optional advanced signed approvals | Plugin settings, lint/maintenance operations, contradiction states, and reviewed-page overwrite protection |
+| Model and platform contract | Defined by the implementation the user chooses | Shipped Codex config has no model pin; core doctor/validator coverage runs on Ubuntu, macOS, and Windows with Python 3.11/3.13; advanced guarded changes require POSIX or WSL | The user configures a provider; [manifest metadata](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/manifest.json) declares Obsidian 1.11+ and `isDesktopOnly: false` |
+| Best fit | Building a minimal custom system from the original design pattern | Provenance-sensitive, Git-reviewed knowledge where human authority boundaries are the main requirement | Convenient in-Obsidian ingestion, generated-wiki navigation, and conversational query |
+
+Choose the gist to design a bespoke system, the plugin for in-Obsidian AI operations, or Loreloom when traceability and review boundaries are the primary requirement. Loreloom's contracts are detailed in [Architecture](docs/ARCHITECTURE.md), [Frontmatter schemas](docs/FRONTMATTER.md), and [Advanced multi-agent execution](docs/MULTI_AGENT.md).
+
+External plugin facts above were checked on 2026-07-20. Volatile release, download, star, and test counts are intentionally omitted; use the linked primary sources for current details. The [Obsidian community registry entry](https://github.com/obsidianmd/obsidian-releases/blob/master/community-plugins.json) currently says the plugin has not been manually reviewed by Obsidian staff. It is not authored by Obsidian or Andrej Karpathy.
+
+> [!WARNING]
+> Do not install Karpathy LLM Wiki into a Loreloom vault during onboarding. The plugin defaults to `wiki/`, while Loreloom manages `Wiki/`; those names can resolve to the same directory on case-insensitive filesystems, and the two generated layers follow different authority rules. Use separate vaults rather than combining them without a separately designed integration.
+
 ## Start your own vault
 
-For the complete onboarding workflow, follow [Build your personal vault](docs/BUILD_YOUR_VAULT.md).
+1. On GitHub, choose **Use this template**, create a **private** repository, and do not include every branch. Use a fork only to contribute framework changes.
+2. Clone your new repository by HTTPS or SSH and enter its root:
 
-### Recommended: GitHub template
+   ```sh
+   git clone https://github.com/YOUR-NAME/YOUR-PRIVATE-VAULT.git
+   cd YOUR-PRIVATE-VAULT
+   ```
 
-1. Publish this repository to GitHub and enable **Settings -> General -> Template repository**.
-2. Choose **Use this template**, create a **private** repository, and do not include every branch.
-3. Clone the new repository to a folder available to your devices.
-4. In Obsidian, choose **Open folder as vault** and select the repository root.
-5. Replace the example links in `MOCs/Home.md`, delete the `Examples/` folders when you no longer need them, and run validation.
-6. Review and personalize `AGENTS.md`, then run the first prompt in [.agents/prompts/00-bootstrap-vault.md](.agents/prompts/00-bootstrap-vault.md).
+3. Install [Git](https://git-scm.com/downloads) and [uv](https://docs.astral.sh/uv/getting-started/installation/) from their official installers, then check both. `uv` provisions the required Python automatically.
 
-Use a fork when contributing improvements back to this public framework. Use a template-created private repository for personal notes; this avoids accidentally proposing private content to the public project.
+   ```sh
+   git --version
+   uv --version
+   ```
 
-### Framework development setup
+4. Run the read-only readiness check:
 
-Install [uv](https://docs.astral.sh/uv/getting-started/installation/) first. It manages the Python version and validation environment; no manual virtual environment or pip command is needed.
+   ```sh
+   uv run --locked python scripts/doctor_vault.py
+   ```
+
+   Continue only when the final line is `Core readiness: READY`. The public framework checkout intentionally fails its `remote-privacy` check; use a private template copy for personal material.
+
+5. In Obsidian, choose **Open folder as vault** and select the repository root. Portable core settings for Properties, Templates, Daily Notes, attachments, and link updates are already committed. No community plugin is required.
+6. Follow [Build your personal vault](docs/BUILD_YOUR_VAULT.md) to complete one Asset → reviewed Source → draft Concept → MOC cycle. For optional read-only personalization help, use the single bootstrap prompt in [.agents/prompts/00-bootstrap-vault.md](.agents/prompts/00-bootstrap-vault.md).
+
+Framework contributors may clone the public repository, but must keep personal material out of it:
 
 ```sh
 git clone https://github.com/yi-john-huang/loreloom.git
 cd loreloom
-uv sync --locked --dev
-uv run python scripts/validate_vault.py
+uv run --locked python scripts/doctor_vault.py
 ```
 
-This checkout keeps the public Loreloom repository as `origin`; use it only for framework work and synthetic examples. For personal notes, create a private repository with the template workflow above.
-
-No Obsidian community plugin is required. Optional plugins are listed in [Getting Started](docs/GETTING_STARTED.md).
-
-## A first Codex session
-
-Open Codex at the vault root and use:
-
-```text
-Read AGENTS.md and .agents/policies/vault-policy.md. Audit this new vault
-without changing files. Then propose a minimal personalization plan. Keep
-reviewed Sources append-only, do not invent citations, and show which example
-files can be removed after onboarding.
-```
-
-Then try a bounded workflow with either an exact local Asset or an absolute HTTP(S) URL:
-
-```text
-Use $capture-vault-source on Assets/<exact-file> or https://example.com/report.
-Create only an editable processing Source intake note. Record URLs without
-fetching them; do not overwrite assets, create Knowledge, or mark the Source
-reviewed. Report provenance, extraction limits, fields to verify, and the exact
-owner review action.
-```
-The owner verifies provenance, current Asset hashes, rights, and fidelity, then reviews the Source directly or authorizes a signed exact `source_review`. Run the vault validator immediately afterward; only then distill and review every draft claim and citation.
-
-```text
-Use $distill-vault-sources on Sources/<exact-reviewed-source>. Revalidate bound
-Assets before reading, create drafts only, keep Sources unchanged, and report
-draft citations, conflicts, limitations, and the owner claim-review boundary.
-```
-
-The reusable prompts in `.agents/prompts/` are deliberately explicit about inputs, outputs, and approval boundaries.
+The public-origin failure is expected in that checkout; the remaining checks still diagnose framework readiness.
 
 ## Validation
 
 Run:
 
 ```sh
-uv run python scripts/validate_vault.py
-uv run python -m unittest discover -s tests -v
+uv run --locked python scripts/doctor_vault.py
+uv run --locked python scripts/validate_vault.py
+uv run --locked python -m unittest discover -s tests -v
 ```
 
 The validator checks:
@@ -141,7 +142,7 @@ The validator checks:
 - semantic rules such as reviewed evergreen Concepts and declared Wiki inputs;
 - repository hygiene such as ignored private files.
 
-For agent-authored changes, `scripts/validate_change.py` additionally compares the diff with the immutable pre-task `HEAD` and filesystem snapshot, then enforces exact output scope, protected paths, strict processing Source admission, append-only reviewed Sources, signed `source_review`, review/archive gates, and preserved Wiki human blocks. Gated approvals require a short-lived, path-specific receipt under protected Git metadata, signed by an owner-held private key and verified against the public-key fingerprint in fixed protected Git metadata. Every final validation—and each gated helper—runs with `python -I` from a separate clean detached worktree at the base commit with `--target-root` pointing to the candidate vault. See [multi-agent and model routing](docs/MULTI_AGENT.md#configure-signed-approvals) before enabling gated operations.
+For **advanced owner-approved multi-agent changes**, `scripts/validate_change.py` additionally compares the diff with an immutable pre-task `HEAD` and filesystem snapshot, then enforces exact output scope, protected paths, strict processing Source admission, append-only reviewed Sources, signed `source_review`, review/archive gates, and preserved Wiki human blocks. Gated approvals require a short-lived, path-specific receipt under protected Git metadata. Native Windows users run this advanced path in WSL. See [Advanced multi-agent execution](docs/MULTI_AGENT.md).
 
 GitHub Actions runs the vault validator and adversarial guardrail tests on pushes and pull requests.
 
@@ -169,7 +170,7 @@ GitHub Actions runs the vault validator and adversarial guardrail tests on pushe
 - [Conventions](docs/CONVENTIONS.md)
 - [Frontmatter schemas](docs/FRONTMATTER.md)
 - [Agent workflows](docs/AGENT_WORKFLOWS.md)
-- [Multi-agent and model routing](docs/MULTI_AGENT.md)
+- [Advanced multi-agent execution](docs/MULTI_AGENT.md)
 - [Privacy and threat model](docs/PRIVACY.md)
 - [Publishing and template setup](docs/PUBLISHING.md)
 - [Contributing](CONTRIBUTING.md)

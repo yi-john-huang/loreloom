@@ -13,9 +13,7 @@ Agent workflows are small, reviewable transformations. They are not an unattende
 | Wiki builder | Reviewed Knowledge | Generated Wiki | Review material synthesis |
 | Reviewer | All Markdown | Report by default | Before fixes |
 
-These logical roles map to project-scoped Codex agents in `.codex/agents/`. Use `$orchestrate-vault-work` when two or more independent roles materially improve the result; otherwise run the workflow directly.
-
-Roles are prompt boundaries, not necessarily separate processes or models.
+The root agent runs these logical roles sequentially by default; they are prompt boundaries, not necessarily separate processes or models. Use `$orchestrate-vault-work` only when the owner explicitly requests or accepts advanced delegation because independent read-only roles materially improve the result.
 
 ## Standard transaction
 
@@ -43,7 +41,7 @@ The corresponding discoverable skills are `$capture-vault-source`, `$triage-vaul
 - Sources are not rewritten during summarization.
 - Generated synthesis is distinguishable from reviewed knowledge.
 - Destructive actions require exact targets and explicit approval.
-- Asset intake never fetches URLs, overwrites binaries, or treats machine extraction as reviewed evidence; direct owner review or signed `source_review` is followed by current-byte Asset revalidation before distillation.
+- Asset intake never fetches URLs, overwrites binaries, or treats machine extraction as reviewed evidence; direct owner review is the default and advanced signed `source_review` is optional. Current Asset bytes are revalidated before distillation.
 - Every factual transformation preserves a path back to evidence.
 - Broad “clean up my vault” requests begin with a read-only report.
 

@@ -86,7 +86,7 @@ Agents must reproduce the marked block byte-for-byte unless the user explicitly 
 | `completed` | Project outcome reached |
 | `archived` | Retained but inactive |
 
-For `Source` notes, `processing` with `review_status: needs-review` means an editable intake record; `captured` with `review_status: reviewed` and a review date means the owner verified the record. Agents may create the former but never attest the latter; review is a direct owner edit or exact signed `source_review`, followed by current-byte Asset revalidation.
+For `Source` notes, `processing` with `review_status: needs-review` means an editable intake record; `captured` with `review_status: reviewed` and a review date means the owner verified the record. Agents may create the former but never attest the latter. Direct owner edit is the default review route; exact signed `source_review` is an advanced alternative. Revalidate current Asset bytes after either route.
 
 
 ## Attachments

@@ -10,12 +10,11 @@ description: Find and add meaningful relationships among a bounded set of Lorelo
 1. Read `AGENTS.md`, `.agents/policies/vault-policy.md`, and `docs/CONVENTIONS.md`.
 2. Confirm exact Knowledge and MOC scope plus whether edits are already authorized.
 3. Search titles, aliases, likely synonyms, existing links, and relevant MOC entry points.
-4. For disjoint topic slices, assign read-only relationship discovery to `source-reader`. Use `vault-architect` for ambiguous note boundaries or cross-topic structure.
+4. Discover and rank candidate relationships sequentially in the root agent. Use `$orchestrate-vault-work` only after explicit owner opt-in for disjoint topic slices or consequential architecture review.
 5. Rank candidate links by navigation value, evidence, and confidence. Explain the relationship in both directions rather than matching keywords alone.
 6. Report near-duplicates separately; do not merge or rename during link discovery.
-7. Before writing, record the immutable base commit and run the change-validator clean preflight with an external snapshot file and every exact output path.
-8. Apply only expressly authorized link additions through the root agent. Preserve human prose and Wiki human blocks.
-9. Run the vault validator and the final change validator against the same base and snapshot with every exact changed path. Report ambiguous titles or rejected suggestions.
+7. Apply only expressly authorized link additions through the root agent. Preserve human prose and Wiki human blocks.
+8. Run `uv run --locked python scripts/validate_vault.py`. An owner-approved multi-agent mutation additionally uses the immutable-base change-validator protocol. Report ambiguous titles or rejected suggestions.
 
 ## Output
 

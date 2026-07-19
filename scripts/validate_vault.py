@@ -642,18 +642,6 @@ def repository_hygiene_errors() -> list[str]:
 def codex_agent_errors() -> list[str]:
     errors: list[str] = []
     config_path = ROOT / ".codex" / "config.toml"
-    expected_models = {
-        "vault-architect": "gpt-5.6-sol",
-        "source-reader": "gpt-5.6-luna",
-        "knowledge-distiller": "gpt-5.6-terra",
-        "wiki-synthesizer": "gpt-5.6-sol",
-        "vault-reviewer": "gpt-5.6-sol",
-        "vault-worker": "gpt-5.6-terra",
-    }
-    expected_efforts = {
-        name: "high" if name == "source-reader" else "max"
-        for name in expected_models
-    }
 
     if not config_path.exists():
         errors.append(f"{relative(config_path)}: missing .codex/config.toml")
@@ -664,8 +652,6 @@ def codex_agent_errors() -> list[str]:
             errors.append(f"{relative(config_path)}: invalid TOML: {exc}")
         else:
             expected_root = {
-                "model": "gpt-5.6-sol",
-                "model_reasoning_effort": "max",
                 "sandbox_mode": "workspace-write",
                 "approval_policy": "on-request",
             }
@@ -673,6 +659,14 @@ def codex_agent_errors() -> list[str]:
                 if config.get(field) != expected:
                     errors.append(
                         f"{relative(config_path)}: {field} must remain {expected!r}"
+                    )
+            for field in ("model", "model_reasoning_effort"):
+                value = config.get(field)
+                if field in config and (
+                    not isinstance(value, str) or not value.strip()
+                ):
+                    errors.append(
+                        f"{relative(config_path)}: {field} must be a non-empty string when set"
                     )
             sandbox = config.get("sandbox_workspace_write")
             if not isinstance(sandbox, dict) or sandbox.get("network_access") is not False:
@@ -714,18 +708,14 @@ def codex_agent_errors() -> list[str]:
                 errors.append(f"{relative(path)}: duplicate agent name '{name}'")
             names.add(name)
 
-        effort = data.get("model_reasoning_effort")
-        expected_effort = expected_efforts.get(path.stem)
-        if expected_effort and effort != expected_effort:
-            errors.append(
-                f"{relative(path)}: reasoning effort must remain {expected_effort!r}"
-            )
-
-        expected_model = expected_models.get(path.stem)
-        if expected_model and data.get("model") != expected_model:
-            errors.append(
-                f"{relative(path)}: model must remain {expected_model!r}"
-            )
+        for field in ("model", "model_reasoning_effort"):
+            value = data.get(field)
+            if field in data and (
+                not isinstance(value, str) or not value.strip()
+            ):
+                errors.append(
+                    f"{relative(path)}: {field} must be a non-empty string when set"
+                )
 
         sandbox = data.get("sandbox_mode")
         if sandbox != "read-only":
@@ -733,7 +723,7 @@ def codex_agent_errors() -> list[str]:
         approval = data.get("approval_policy")
         if approval != "never":
             errors.append(
-                f"{relative(path)}: read-only custom agents must use approval_policy 'never'"
+                f"{relative(path)}: approval_policy must remain 'never' for read-only custom agents"
             )
 
     return errors

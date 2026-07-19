@@ -1,6 +1,6 @@
-# Multi-agent and model routing
+# Advanced multi-agent execution
 
-Loreloom uses specialist agents to protect the root conversation from noisy source analysis while keeping authority centralized. Parallelism is an optimization for independent work, not a default for every note.
+Loreloom runs bounded lifecycle skills sequentially in one root agent by default. This guide applies only after the owner explicitly requests parallel/custom agents or accepts a concrete delegation benefit explained by the root.
 
 ## Operating model
 
@@ -8,44 +8,43 @@ Loreloom uses specialist agents to protect the root conversation from noisy sour
 Vault owner
     |
     v
-Root orchestrator (scope, decisions, writes, validation)
+Root agent (scope, decisions, writes, validation)
     |
-    +-- read-only specialist A
-    +-- read-only specialist B
-    +-- read-only reviewer
+    +-- optional read-only role A
+    +-- optional read-only role B
+    +-- optional read-only reviewer
     |
     v
 One consolidated, validated change set
 ```
 
-The root agent is the only writer. Every custom subagent is configured read-only and returns findings or proposals. A live parent permission override can take precedence over a custom-agent sandbox default, so do not run this workflow under a mode that broadens child access; verify the effective child sandbox and retain the explicit no-write instruction. `vault-worker` turns one isolated path set into an implementation-ready proposal; the root applies the accepted diff.
+The root is the only writer. Every custom agent returns findings or proposals. A live parent permission override can supersede a custom-agent sandbox default, so verify effective read-only access and retain explicit no-write instructions.
 
-## Project agents
+## Optional project roles
 
-| Agent | Model | Effort | Sandbox | Use |
-|---|---|---:|---|---|
-| `vault-architect` | `gpt-5.6-sol` | max | read-only | Ontology, lifecycle, note boundaries, consequential design |
-| `source-reader` | `gpt-5.6-luna` | high | read-only | Fast bounded evidence extraction, classification, and provenance analysis |
-| `knowledge-distiller` | `gpt-5.6-terra` | max | read-only | Atomic Concept draft proposals and duplicate detection |
-| `wiki-synthesizer` | `gpt-5.6-sol` | max | read-only | Broad synthesis, conflicts, gaps, and changed conclusions |
-| `vault-reviewer` | `gpt-5.6-sol` | max | read-only | Independent provenance, privacy, and regression review |
-| `vault-worker` | `gpt-5.6-terra` | max | read-only | Implementation-ready proposal for one isolated assignment |
+| Agent | Sandbox | Use |
+|---|---|---|
+| `vault-architect` | read-only | Ontology, lifecycle, note boundaries, consequential design |
+| `source-reader` | read-only | Bounded evidence extraction, classification, and provenance analysis |
+| `knowledge-distiller` | read-only | Atomic Concept proposals and duplicate detection |
+| `wiki-synthesizer` | read-only | Synthesis, conflicts, gaps, and changed conclusions |
+| `vault-reviewer` | read-only | Independent provenance, privacy, and regression review |
+| `vault-worker` | read-only | Implementation-ready proposal for one isolated assignment |
 
-Sol handles the highest-judgment planning, synthesis, and QA roles. Terra handles everyday reasoning, knowledge distillation, and implementation proposals. Luna High handles clear, repeatable, high-volume evidence extraction and classification. Keep Luna assignments bounded with explicit inputs and output fields; escalate ambiguous interpretation to Terra or Sol rather than increasing effort by default.
+The tracked roles omit model and reasoning-effort preferences, so they inherit the model available in the active Codex session. Model choice never changes authority. If a requested role cannot run, do not substitute silently: low-risk extraction or proposal work may return to the root with reduced coverage disclosed; material synthesis or review requires direct owner review and an incomplete-specialist-coverage report.
 
-Model configuration is a preference, not an authority boundary. `AGENTS.md`, sandbox mode, Sources immutability, human-review gates, and the single-writer rule still apply when a fallback model is used. Never substitute silently: a disclosed fallback is limited to low-risk, read-only analysis. If a material Sol synthesis or review cannot run, pause for owner direction or require explicit human review and report incomplete coverage.
+## When the owner may opt in
 
-## When to delegate
-
-Delegate when at least one condition is true:
+Advanced delegation can help when:
 
 - two or more inputs can be analyzed independently;
 - architecture, evidence analysis, and review are distinct workstreams;
 - a broad audit can be split by provenance, structure, and privacy;
-- a material generated page benefits from an independent synthesis and QA pass;
+- a material generated page benefits from independent synthesis and QA;
 - the owner explicitly asks for parallel agents.
 
-Work directly when the task is one short lookup, one simple note edit, tightly sequential, or likely to cost more to coordinate than execute.
+Otherwise work sequentially in the root. Delegation is never triggered solely by request size or by the presence of custom role files.
+
 
 ## Assignment contract
 
@@ -206,17 +205,16 @@ git -C "$vault_root" worktree remove --force "$tool_root"
 
 ## Skill routing
 
-| Task | Skill | Typical specialists |
-|---|---|---|
-| Complex multi-layer request | `$orchestrate-vault-work` | architect plus task roles plus reviewer |
-| Inbox processing | `$triage-vault-inbox` | source-reader |
-| Asset to Source | `$capture-vault-source` | source-reader only when an authorized attachment needs bounded extraction |
-| Source to Knowledge | `$distill-vault-sources` | source-reader, knowledge-distiller, optional architect |
-| Cross-topic links and MOCs | `$connect-vault-notes` | source-reader, optional architect |
-| Generated Wiki refresh | `$regenerate-vault-wiki` | source-reader, wiki-synthesizer, reviewer |
-| Weekly or pre-publication review | `$audit-vault-health` | architect, source-reader, reviewer |
+Invoke the ordinary lifecycle skill in the root first. Invoke `$orchestrate-vault-work` only for the owner-approved advanced mode described above; it may assign any available read-only roles whose independent output materially benefits the exact task.
 
-Invoke a skill explicitly with its `$name` when the workflow is consequential or should not depend on implicit matching.
+| Task | Root-default skill |
+|---|---|
+| Inbox processing | `$triage-vault-inbox` |
+| Asset to Source | `$capture-vault-source` |
+| Source to Knowledge | `$distill-vault-sources` |
+| Cross-topic links and MOCs | `$connect-vault-notes` |
+| Generated Wiki refresh | `$regenerate-vault-wiki` |
+| Weekly or pre-publication review | `$audit-vault-health` |
 
 ## Conflict resolution
 

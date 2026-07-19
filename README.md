@@ -10,20 +10,26 @@ The framework treats Markdown as the durable source format and separates capture
 ## Core model
 
 ```text
-Inbox / Daily
-      |
-      v
-Sources (immutable evidence)
-      |
-      v
-Knowledge (atomic, reviewed concepts)
-      |
-      +------------------+
-      v                  v
-Wiki (generated)       MOCs (navigation)
-      |
-      v
-Projects / Areas (action and responsibility)
+Owner Asset / absolute HTTP(S) URL / Inbox / Daily
+                         |
+                         v
+Source processing (editable intake)
+                         |
+                         v
+Owner review (direct or signed source_review)
+                         |
+                         v
+Current-byte Asset revalidation
+                         |
+                         v
+Concept draft -> owner claim/citation review -> optional evergreen
+                         |
+                         +------------------+
+                         v                  v
+                       Wiki               MOCs
+                         |
+                         v
+                   Projects / Areas
 ```
 
 - **One vault, many topics.** Technology, food, travel, career, and other subjects connect through links and metadata instead of separate vaults.
@@ -33,6 +39,7 @@ Projects / Areas (action and responsibility)
 - **Agents are governed.** `AGENTS.md` and `.agents/policies/` define what an agent may read, create, or change.
 - **Specialists are bounded.** Project agents split read-heavy work by role while one orchestrator owns decisions and writes.
 - **Skills are reusable.** Repo-scoped skills route capture, distillation, synthesis, auditing, and orchestration consistently.
+- **Asset or URL intake.** Owners may supply local files in `Assets/` or record absolute HTTP(S) URLs; `$capture-vault-source` creates editable processing Sources without fetching, copying, or overwriting resources.
 - **Plain Markdown wins.** The vault remains usable without a plugin, database, or hosted service.
 
 ## Repository map
@@ -40,7 +47,8 @@ Projects / Areas (action and responsibility)
 | Path | Purpose | Default owner |
 |---|---|---|
 | `Inbox/` | Unprocessed capture | Human + agent |
-| `Sources/` | Original or faithful source records | Human; agent append-only |
+| `Assets/` | Owner-supplied binary evidence | Human-led; agent read/bind only |
+| `Sources/` | Editable processing intake, then faithful append-only reviewed records | Human; agent creates processing intake |
 | `Knowledge/` | Atomic, cited concept notes | Human-reviewed |
 | `Wiki/` | Regenerable synthesis | Agent-generated |
 | `MOCs/` | Maps of Content and navigation | Shared |
@@ -92,16 +100,25 @@ Open Codex at the vault root and use:
 ```text
 Read AGENTS.md and .agents/policies/vault-policy.md. Audit this new vault
 without changing files. Then propose a minimal personalization plan. Keep
-Sources immutable, do not invent citations, and show which example files can
-be removed after onboarding.
+reviewed Sources append-only, do not invent citations, and show which example
+files can be removed after onboarding.
 ```
 
-Then try a bounded workflow:
+Then try a bounded workflow with either an exact local Asset or an absolute HTTP(S) URL:
 
 ```text
-Follow .agents/workflows/source-to-knowledge.md for the unprocessed notes in
-Inbox. Create drafts only. Do not mark anything evergreen and do not rewrite
-files in Sources. Summarize the resulting changes and any uncertain claims.
+Use $capture-vault-source on Assets/<exact-file> or https://example.com/report.
+Create only an editable processing Source intake note. Record URLs without
+fetching them; do not overwrite assets, create Knowledge, or mark the Source
+reviewed. Report provenance, extraction limits, fields to verify, and the exact
+owner review action.
+```
+The owner verifies provenance, current Asset hashes, rights, and fidelity, then reviews the Source directly or authorizes a signed exact `source_review`. Run the vault validator immediately afterward; only then distill and review every draft claim and citation.
+
+```text
+Use $distill-vault-sources on Sources/<exact-reviewed-source>. Revalidate bound
+Assets before reading, create drafts only, keep Sources unchanged, and report
+draft citations, conflicts, limitations, and the owner claim-review boundary.
 ```
 
 The reusable prompts in `.agents/prompts/` are deliberately explicit about inputs, outputs, and approval boundaries.
@@ -120,10 +137,11 @@ The validator checks:
 - required and type-specific YAML frontmatter;
 - ISO dates and controlled values;
 - unresolved Obsidian wikilinks;
+- local Asset references, existence, hashes, and embedded attachment links;
 - semantic rules such as reviewed evergreen Concepts and declared Wiki inputs;
 - repository hygiene such as ignored private files.
 
-For agent-authored changes, `scripts/validate_change.py` additionally compares the diff with an immutable pre-task commit and filesystem snapshot, then enforces exact output scope, protected paths, Source immutability, review and archive gates, and preserved Wiki human blocks. Gated approvals require a short-lived, path-specific receipt created by the owner under protected Git metadata.
+For agent-authored changes, `scripts/validate_change.py` additionally compares the diff with the immutable pre-task `HEAD` and filesystem snapshot, then enforces exact output scope, protected paths, strict processing Source admission, append-only reviewed Sources, signed `source_review`, review/archive gates, and preserved Wiki human blocks. Gated approvals require a short-lived, path-specific receipt under protected Git metadata, signed by an owner-held private key and verified against the public-key fingerprint in fixed protected Git metadata. Every final validation—and each gated helper—runs with `python -I` from a separate clean detached worktree at the base commit with `--target-root` pointing to the candidate vault. See [multi-agent and model routing](docs/MULTI_AGENT.md#configure-signed-approvals) before enabling gated operations.
 
 GitHub Actions runs the vault validator and adversarial guardrail tests on pushes and pull requests.
 

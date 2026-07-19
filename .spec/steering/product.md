@@ -21,23 +21,26 @@ Provide a durable personal knowledge system that remains useful without any part
 ## Knowledge Lifecycle
 
 ```text
-Inbox / Daily
-      |
-      v
-Sources (faithful, append-only evidence)
-      |
-      v
-Knowledge (atomic, cited concepts)
-      |
-      +------------------+
-      v                  v
-Wiki (generated)       MOCs (navigation)
-      |
-      v
-Projects / Areas (action and responsibility)
-      |
-      v
-Archive (retained history)
+Owner Asset / absolute HTTP(S) URL / Inbox / Daily
+                         |
+                         v
+Source processing (editable intake)
+                         |
+                         v
+Owner review (direct or signed source_review)
+                         |
+                         v
+Current-byte Asset revalidation
+                         |
+                         v
+Concept draft -> owner claim/citation review -> optional evergreen
+                         |
+                         +------------------+
+                         v                  v
+                       Wiki               MOCs
+                         |
+                         v
+                Projects / Areas -> Archive
 ```
 
 Folders express lifecycle and authority. Links, tags, and Maps of Content express subject relationships across technology, travel, food, career, and other topics.
@@ -45,13 +48,13 @@ Folders express lifecycle and authority. Links, tags, and Maps of Content expres
 ## Core Capabilities
 
 1. **Fast, untrusted capture** — `Inbox/` and `Daily/` accept incomplete observations without treating them as durable truth.
-2. **Evidence preservation** — `Sources/` records provenance and is append-only by default; corrections use dated amendments.
-3. **Canonical knowledge** — `Knowledge/` contains one durable concept per note with traceable sources and explicit confidence.
-4. **Human-reviewed truth** — agents may create drafts, but only a human may promote a Concept to `status: evergreen`.
-5. **Regenerable synthesis** — `Wiki/` pages declare their Knowledge inputs, generation metadata, and review state while preserving marked human-owned blocks.
-6. **Connected navigation** — wikilinks, lowercase hierarchical tags, and curated `MOCs/` connect subjects without topic-folder duplication.
-7. **Governed automation** — repository policies, reusable skills, read-only specialists, exact change scopes, validators, and human gates constrain agent work.
-8. **Portable storage** — UTF-8 Markdown and YAML remain readable and editable without Obsidian, AI tools, or a network service.
+2. **Local or URL evidence intake** — owners supply exact Assets or absolute HTTP(S) URLs; URLs are recorded without fetching or implying reachability, freshness, or extraction.
+3. **Evidence preservation** — Sources remain editable while processing, then become faithful append-only records after owner review.
+4. **Owner-controlled review** — Source review is a direct owner edit or an exact signed `source_review`; current Asset bytes are revalidated before distillation.
+5. **Canonical knowledge** — `Knowledge/` contains one durable concept per note with traceable sources and explicit confidence; the owner reviews draft claims and citations.
+6. **Regenerable synthesis** — `Wiki/` pages declare their Knowledge inputs, generation metadata, and review state while preserving marked human-owned blocks.
+7. **Connected navigation** — wikilinks, lowercase hierarchical tags, and curated `MOCs/` connect subjects without topic-folder duplication.
+8. **Governed, portable automation** — policies, exact scopes, validators, human gates, UTF-8 Markdown, and YAML keep agent work bounded and the vault usable without a hosted service.
 
 ## Public Framework and Private Vault Boundary
 

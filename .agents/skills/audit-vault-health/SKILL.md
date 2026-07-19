@@ -15,9 +15,11 @@ description: Perform a read-only Loreloom health audit covering schema errors, b
    - `vault-architect` for duplication, orphaning, and lifecycle drift;
    - `vault-reviewer` for privacy, contradictions, generated-page drift, and policy violations.
 5. Consolidate exact-path findings, remove duplicates, and rank by severity, confidence, repair value, and risk.
-6. Recommend at most five actions. Do not implement repairs during the audit pass.
-7. Require exact approval for a second repair pass, especially promotion, archive, move, rename, deletion, commit, or push.
+6. For asset-first vaults, inspect `Assets/` excluding `Assets/README.md` and report unreferenced files, duplicate hashes, hash drift, unavailable extraction, missing Source bindings, and reviewed Sources whose declared Assets are missing. Do not move, delete, or rewrite assets during the report pass.
+7. Recommend at most five actions. Do not implement repairs during the audit pass.
+8. Require exact approval for a second repair pass, especially promotion, archive, move, rename, deletion, commit, or push.
 
 ## Output
 
 Separate validator failures, high-confidence risks, editorial suggestions, and questions for the owner. State explicitly when no actionable issue is found.
+Separate asset findings into missing bindings, duplicate-risk, hash drift, unavailable extraction, privacy/rights concerns, and validator failures. Never infer that an unreferenced file is safe to delete.

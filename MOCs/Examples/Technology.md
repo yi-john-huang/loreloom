@@ -3,21 +3,17 @@ type: moc
 title: Technology
 status: evergreen
 created: 2026-07-18
-updated: 2026-07-18
+updated: 2026-07-19
 tags:
   - tech
 aliases:
   - Tech
 scope: Example navigation for technical knowledge
 curation: human
+agent: codex
 ---
 
 # Technology
-
-## Start here
-
-- [[Wiki/Examples/AWS identity basics]] gives generated context.
-- [[Knowledge/Examples/IAM role]] is the canonical concept example.
 
 ## Active application
 

@@ -61,13 +61,13 @@ Only `.spec/steering/` supplies shared project context. Other locally generated 
 
 ## Markdown and Note Naming
 
-- Use descriptive natural-language filenames, including spaces: `IAM role.md`.
+- Use descriptive natural-language filenames, including spaces: `Tokyo ramen observation.md`.
 - A managed note’s `title` should match its filename stem.
 - Use singular nouns for Concepts and natural plural or question-shaped titles for synthesis.
 - Daily filenames and their `date` field use `YYYY-MM-DD`.
 - Use Obsidian-aware renaming so wikilinks change with the note.
 - Prefer an alias on an existing canonical note over a near-duplicate.
-- Use vault-root wikilinks for important references: `[[Knowledge/Examples/IAM role]]`.
+- Use vault-root wikilinks for important references: `[[Knowledge/Examples/Tokyo ramen observation]]`.
 - Store subjects in links, tags, and MOCs rather than new top-level folders.
 
 ## Frontmatter and Formatting

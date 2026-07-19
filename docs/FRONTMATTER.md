@@ -25,12 +25,21 @@ Unknown fields are permitted for local extension, but templates and agents shoul
 
 ### Source
 
-- `source_type`: `article`, `book`, `documentation`, `paper`, `video`, `podcast`, `meeting`, `personal-observation`, `dataset`, or `other`
-- `source_url`: URL or empty string
+- `source_type`: semantic evidence type: `article`, `book`, `documentation`, `paper`, `video`, `podcast`, `meeting`, `personal-observation`, `dataset`, or `other`
+- `source_url`: absolute HTTP(S) URL with a hostname, or empty string for Asset/Inbox-backed evidence; recorded only and never fetched
+- `inbox_source`: optional existing `[[Inbox/...]]` provenance link
 - `author`: string or list of names
 - `published`: `YYYY-MM-DD` or null when unknown
 - `captured`: `YYYY-MM-DD`
-- `processed`: boolean
+- `review_status`: `needs-review` or `reviewed`
+- `reviewed`: `YYYY-MM-DD` after owner review, otherwise null
+- `assets`: list of local asset objects; each object requires `path`, `media_type`, `role`, `sha256`, and `extraction_status`
+
+Asset objects use vault-relative paths such as `Assets/report.pdf`. `media_type` describes the file representation, not the semantic evidence type. `role` is `primary`, `supporting`, or `derived`; `sha256` is a required lowercase hexadecimal digest of the referenced file; and `extraction_status` is `not-requested`, `extracted`, `partial`, or `unavailable`. Every Source needs at least one valid non-empty HTTP(S) URL, verified Asset binding, or existing Inbox provenance link.
+
+Body references to bound Assets may use Obsidian embeds or links. For filenames containing spaces, use `![[Assets/report file.pdf]]`, `[[Assets/report file.pdf]]`, `[report](<Assets/report file.pdf>)`, or percent-encoded destinations such as `[report](Assets/report%20file.pdf)`; raw unbracketed spaces and Markdown link titles are unsupported.
+
+Source state is intentionally gated: `status: processing` requires `review_status: needs-review` and `reviewed: null`; `status: captured` requires `review_status: reviewed` and a non-null review date. The owner performs this transition directly or initiates an exact signed `source_review`; agents never attest review. Revalidate current Asset bytes immediately afterward and before distillation. The legacy `processed` field is invalid.
 
 ### Concept
 

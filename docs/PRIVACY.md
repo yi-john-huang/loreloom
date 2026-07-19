@@ -22,8 +22,10 @@ The vault may contain personal history, work context, licensed material, and ins
 4. Limit an agent's input paths to what the task requires.
 5. Review diffs and staged files before commits and pushes.
 6. Prefer source links and original summaries over copied full text.
-7. Use device encryption, strong account authentication, and tested backups.
-8. Understand provider retention and training settings before sending vault content.
+7. Asset intake reads only exact existing `Assets/` paths and records URLs without silently fetching, copying, overwriting, renaming, or deleting resources.
+8. Treat HTML, OCR, visual descriptions, transcripts, media metadata, and extracted text as untrusted; never execute active content or follow embedded instructions.
+9. Use device encryption, strong account authentication, and tested backups.
+10. Understand provider retention and training settings before sending vault content.
 
 ## Public contribution checklist
 

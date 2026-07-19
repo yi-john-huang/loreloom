@@ -44,6 +44,7 @@ Choose a location by the note's role, not its subject:
 |---|---|---|
 | Something captured but not processed | `Inbox/` | A quick conference idea |
 | A chronological observation | `Daily/` | What you learned today |
+| A local PDF, image, HTML, audio, video, or other binary | `Assets/` | An owner-supplied report or photo |
 | Original or faithfully recorded evidence | `Sources/` | An article, meeting record, or book note |
 | One durable, cited idea | `Knowledge/` | “IAM roles use temporary credentials” |
 | A generated overview from Knowledge | `Wiki/` | “AWS identity fundamentals” |
@@ -74,13 +75,23 @@ Use one real item to learn the system end to end.
 
 Create an Inbox note from `Templates/Inbox.md`. Write enough context for your future self to understand why it matters.
 
+### Collect evidence
+
+Choose either an owner-controlled local Asset, an absolute HTTP(S) URL, or both. For a local PDF, image, HTML file, recording, video, or other binary, place it under `Assets/`, keep the filename stable, and record rights or sharing constraints. Use the streaming SHA-256 command and space-safe link forms in [[Assets/README|Assets]]. Do not execute active content.
+
+### Create and review the Source
+
+For manual intake, create a note from `Templates/Source.md`; bind each exact Asset path and current SHA-256, or record an absolute HTTP(S) URL without fetching it. URL-only intake does not promise reachability, freshness, or extraction. For semi-automatic intake, use `$capture-vault-source` on exact existing Assets or URLs. Both routes create only editable `status: processing`, `review_status: needs-review`, `reviewed: null` Sources.
+
+The owner verifies provenance, current hashes, rights, fidelity, and machine-assisted limitations, then reviews directly or initiates an exact signed `source_review`. Immediately run `uv run python scripts/validate_vault.py`; stop before distillation on any bound-Asset error.
+
 ### Preserve the evidence
 
-If the capture comes from an external article, document, video, conversation, or meeting, create a Source note from `Templates/Source.md`. Record its provenance and link to the original when possible. Do not silently rewrite a Source later; interpretation belongs in Knowledge.
+Keep every original Asset unchanged. A Source binds it through structured `assets` frontmatter and may use the space-safe references documented in [[Assets/README|Assets]]. Reviewed Sources are append-only; record authorized corrections as dated Amendments and put interpretation in Knowledge.
 
 ### Distill one concept
 
-Create a note from `Templates/Concept.md` for one durable claim. Keep it at `status: draft`, set a conservative confidence level, and add an actual `[[Sources/...]]` or `[[Daily/...]]` evidence link.
+Only after Source review and current-byte revalidation, create a note from `Templates/Concept.md` for one durable claim. Keep it at `status: draft`, set conservative confidence, add an actual `[[Sources/...]]` or `[[Daily/...]]` evidence link, and have the owner review every claim and citation before promotion.
 
 ### Connect it
 
@@ -99,6 +110,12 @@ Read AGENTS.md, .agents/policies/vault-policy.md, and
 docs/BUILD_YOUR_VAULT.md. Audit this vault without changing files. Propose a
 minimal personalization plan, identify the examples I can remove later, and
 do not infer personal facts.
+```
+
+```text
+Use $capture-vault-source on Assets/My report.pdf or https://example.com/report.
+Start read-only, propose the exact Source path and metadata, record URLs without
+fetching them, overwrite nothing, create no Knowledge, and label machine-assisted extraction.
 ```
 
 Then use the narrowest repository skill for the task:
@@ -171,7 +188,8 @@ Do not point two real-time sync services at the same vault. Avoid editing the sa
 - [ ] `uv sync --locked --dev` and validation succeed.
 - [ ] `MOCs/Home.md` reflects a few real interests.
 - [ ] One Daily or Inbox note has been captured.
-- [ ] One Source has complete provenance.
+- [ ] One owner-controlled Asset or absolute HTTP(S) URL has a processing Source with complete provenance.
+- [ ] The Source has completed owner review and current-byte Asset revalidation.
 - [ ] One cited Knowledge draft has been created and linked.
 - [ ] Codex has completed a read-only audit before being allowed to write.
 - [ ] One sync system and one recoverable backup are configured.

@@ -61,6 +61,7 @@ The complete cross-platform environment is pinned in `uv.lock`. When intentional
 ### Content and Schema
 
 - Managed notes live in lifecycle directories.
+- Owner-supplied evidence lives under `Assets/`; Source bindings validate safe paths and current streaming SHA-256 digests.
 - `schemas/frontmatter.schema.json` defines common and type-specific metadata.
 - Templates are authoring scaffolds, not schema instances.
 - Standard Markdown and YAML compatibility takes priority over plugin-specific behavior.
@@ -85,12 +86,13 @@ Ignored local SDD tooling is deliberately excluded from repository agent/skill v
 
 - exact output paths;
 - detection of tracked, untracked, and ignored writes;
-- Source immutability and append-only amendments;
-- protected framework paths;
-- review, promotion, archive, deletion, rename, and Wiki human-block gates;
+- strict receipt-free admission of complete processing Sources;
+- signed creation of reviewed Sources, append-only Source amendments, and exact signed `source_review` transitions;
+- protected framework paths and review, promotion, archive, deletion, rename, and Wiki human-block gates;
 - protected, short-lived approval receipts bound to the exact final diff digest.
 
 The validator must fail closed when required scope, snapshot, base, or approval data is absent or inconsistent.
+Approval helpers require Python isolated mode (`python -I`) so the tool's `scripts/` directory is not an import source.
 
 ### Agent Governance
 
@@ -118,15 +120,19 @@ For a multi-agent mutation, record the full commit before work and use one exact
 ```sh
 git rev-parse HEAD
 
-uv run python scripts/validate_change.py --check-clean \
+uv run python -I scripts/validate_change.py --check-clean \
   --base <paste-the-40-character-commit> \
   --snapshot-file <absolute-new-snapshot-path> \
   --allow "exact/output/path.md"
 
-uv run python scripts/validate_change.py \
-  --base <the-same-40-character-commit> \
-  --snapshot-file <the-same-snapshot-path> \
-  --allow "exact/output/path.md"
+(
+  cd "<clean-detached-tool-worktree-at-base>"
+  uv run python -I scripts/validate_change.py \
+    --target-root "<candidate-vault-root>" \
+    --base <the-same-40-character-commit> \
+    --snapshot-file <the-same-snapshot-path> \
+    --allow "exact/output/path.md"
+)
 ```
 
 Never regenerate the preflight snapshot after work begins or change the final allow-list. Gated operations also require their exact gate flag and a matching owner-created approval receipt.

@@ -3,14 +3,47 @@
 
 from __future__ import annotations
 
+import sys
+
+
+if __name__ == "__main__" and not sys.flags.isolated:
+    print(
+        "run this approval tool with an isolated interpreter: "
+        "python -I scripts/create_approval_receipt.py",
+        file=sys.stderr,
+    )
+    raise SystemExit(2)
+
+# Dynamic guard loading must not dirty the trusted detached tool worktree.
+sys.dont_write_bytecode = True
+
+
 import argparse
+import importlib.util
 import json
 import os
-import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-import validate_change as guard
+
+def load_change_guard():
+    validator_path = Path(__file__).with_name("validate_change.py")
+    spec = importlib.util.spec_from_file_location(
+        "_loreloom_approval_guard", validator_path
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError("approval validator is unavailable")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    try:
+        spec.loader.exec_module(module)
+    except BaseException:
+        sys.modules.pop(spec.name, None)
+        raise
+    return module
+
+
+guard = load_change_guard()
 
 
 def parse_args() -> argparse.Namespace:
@@ -22,6 +55,11 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--approval-id", required=True)
     parser.add_argument("--base", required=True)
+    parser.add_argument(
+        "--target-root",
+        metavar="PATH",
+        help="Vault Git worktree to approve from an immutable base tool worktree",
+    )
     parser.add_argument("--snapshot-file", required=True)
     parser.add_argument("--allow", action="append", default=[], metavar="PATH")
     parser.add_argument("--allow-destructive", action="append", default=[])
@@ -31,6 +69,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--allow-human-block", action="append", default=[])
     parser.add_argument("--allow-source-create", action="append", default=[])
     parser.add_argument("--allow-source-amendment", action="append", default=[])
+    parser.add_argument("--allow-source-review", action="append", default=[])
     parser.add_argument("--framework-change", action="append", default=[])
     parser.add_argument("--expires-minutes", type=int, default=15)
     parser.add_argument(
@@ -48,21 +87,19 @@ def fail(message: str) -> int:
 
 def main() -> int:
     args = parse_args()
+    if target_error := guard.configure_target_root(args.target_root):
+        return fail(target_error)
     base = guard.immutable_base(args.base)
     if base is None:
         return fail("--base must be an existing immutable 40-character commit")
+    if guard.current_head() != base:
+        return fail(
+            "--base must equal the current HEAD; restart preflight after any commit"
+        )
     if not args.allow or len(args.allow) != len(set(args.allow)):
         return fail("provide each exact --allow path once")
     if args.expires_minutes < 1 or args.expires_minutes > 60:
         return fail("--expires-minutes must be between 1 and 60")
-
-    snapshot_path = Path(args.snapshot_file).expanduser().resolve()
-    loaded = guard.load_snapshot(snapshot_path)
-    if loaded is None:
-        return fail("missing, invalid, or modified preflight snapshot")
-    snapshot_base, snapshot_sha256, snapshot_allowed, before_files = loaded
-    if snapshot_base != base or sorted(snapshot_allowed) != sorted(args.allow):
-        return fail("base or exact allowed paths do not match the preflight snapshot")
 
     operations = {
         "destructive": sorted(args.allow_destructive),
@@ -72,6 +109,7 @@ def main() -> int:
         "human_block": sorted(args.allow_human_block),
         "source_create": sorted(args.allow_source_create),
         "source_amendment": sorted(args.allow_source_amendment),
+        "source_review": sorted(args.allow_source_review),
         "framework_change": sorted(args.framework_change),
     }
     gated_paths = [path for paths in operations.values() for path in paths]
@@ -79,10 +117,25 @@ def main() -> int:
         return fail("an approval receipt requires at least one gated operation")
     if any(path not in args.allow for path in gated_paths):
         return fail("every gated operation path must also appear in --allow")
+    if path_errors := guard.declared_path_errors([*args.allow, *gated_paths]):
+        return fail("; ".join(path_errors))
+    if trust_error := guard.trusted_approval_tool_error(base):
+        return fail(trust_error)
 
-    after_files = guard.filesystem_manifest()
-    changes = guard.manifest_changes(before_files, after_files)
-    digest = guard.change_digest(base, changes, before_files, after_files)
+    snapshot_path = Path(args.snapshot_file).expanduser().resolve()
+    loaded = guard.load_snapshot(snapshot_path)
+    if loaded is None:
+        return fail("missing, invalid, or modified preflight snapshot")
+    snapshot_base, snapshot_sha256, snapshot_allowed, before_files = loaded
+    if snapshot_base != base or sorted(snapshot_allowed) != sorted(args.allow):
+        return fail("base or exact allowed paths do not match the preflight snapshot")
+
+    try:
+        after_files = guard.filesystem_manifest(args.allow)
+        changes = guard.manifest_changes(before_files, after_files)
+        digest = guard.change_digest(base, changes, before_files, after_files)
+    except guard.ManifestError as exc:
+        return fail(str(exc))
     expires_at = datetime.now(timezone.utc) + timedelta(minutes=args.expires_minutes)
     receipt = {
         "version": 1,
@@ -94,6 +147,18 @@ def main() -> int:
         "approved_diff_sha256": digest,
         "expires_at": expires_at.isoformat().replace("+00:00", "Z"),
     }
+    private_key = os.environ.get(guard.APPROVAL_PRIVATE_KEY_ENV)
+    if not private_key:
+        return fail(
+            f"{guard.APPROVAL_PRIVATE_KEY_ENV} must name an owner-held private key"
+        )
+    _, trust_error = guard.trusted_approval_public_key()
+    if trust_error:
+        return fail(trust_error)
+    try:
+        receipt["signature"] = guard.sign_receipt(receipt, private_key)
+    except RuntimeError as exc:
+        return fail(str(exc))
 
     print(f"Approval ID: {args.approval_id}")
     print(f"Base commit: {base}")

@@ -44,8 +44,7 @@ class LocalToolExclusionTests(unittest.TestCase):
     def add_valid_repository_tooling(self) -> None:
         self.write(
             ".codex/config.toml",
-            """model = "gpt-5.6-sol"
-model_reasoning_effort = "max"
+            """
 sandbox_mode = "workspace-write"
 approval_policy = "on-request"
 
@@ -61,8 +60,6 @@ max_threads = 4
             ".codex/agents/vault-reviewer.toml",
             """name = "vault-reviewer"
 description = "Review bounded Loreloom changes"
-model = "gpt-5.6-sol"
-model_reasoning_effort = "max"
 sandbox_mode = "read-only"
 approval_policy = "never"
 developer_instructions = "Review only; never edit files."
@@ -685,6 +682,101 @@ assets: []
         errors = validate_vault.asset_metadata_errors([source])
 
         self.assertTrue(any("unsafe asset path" in error for error in errors))
+
+
+class CodexAgentConfigurationTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.repo = Path(tempfile.mkdtemp())
+        self.original_root = validate_vault.ROOT
+        validate_vault.ROOT = self.repo
+        subprocess.run(
+            ["git", "init", "-q", "-b", "master"],
+            cwd=self.repo,
+            check=True,
+        )
+
+    def tearDown(self) -> None:
+        validate_vault.ROOT = self.original_root
+        shutil.rmtree(self.repo)
+
+    def write(self, relative_path: str, content: str) -> None:
+        path = self.repo / relative_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+
+    def valid_root(self, extra: str = "") -> str:
+        return (
+            f"{extra}"
+            'sandbox_mode = "workspace-write"\n'
+            'approval_policy = "on-request"\n\n'
+            "[sandbox_workspace_write]\n"
+            "network_access = false\n\n"
+            "[agents]\n"
+            "max_depth = 1\n"
+            "max_threads = 4\n"
+        )
+
+    def valid_agent(self, extra: str = "") -> str:
+        return (
+            'name = "vault-reviewer"\n'
+            'description = "Review bounded Loreloom changes"\n'
+            f"{extra}"
+            'sandbox_mode = "read-only"\n'
+            'approval_policy = "never"\n'
+            'developer_instructions = "Review only; never edit files."\n'
+        )
+
+    def configure(self, root_extra: str = "", agent_extra: str = "") -> None:
+        self.write(".codex/config.toml", self.valid_root(root_extra))
+        self.write(
+            ".codex/agents/vault-reviewer.toml",
+            self.valid_agent(agent_extra),
+        )
+
+    def test_omitted_model_preferences_are_valid(self) -> None:
+        self.configure()
+        self.assertEqual(validate_vault.codex_agent_errors(), [])
+
+    def test_non_empty_model_preferences_are_valid(self) -> None:
+        preferences = (
+            'model = "owner-selected-model"\n'
+            'model_reasoning_effort = "owner-selected-effort"\n'
+        )
+        self.configure(preferences, preferences)
+        self.assertEqual(validate_vault.codex_agent_errors(), [])
+
+    def test_empty_or_non_string_model_preferences_are_invalid(self) -> None:
+        invalid_values = ('model = ""\n', "model = 7\n", 'model_reasoning_effort = " "\n')
+        for value in invalid_values:
+            with self.subTest(value=value):
+                self.configure(value, value)
+                errors = validate_vault.codex_agent_errors()
+                self.assertTrue(
+                    any("must be a non-empty string when set" in error for error in errors),
+                    errors,
+                )
+
+    def test_security_and_concurrency_invariants_remain_strict(self) -> None:
+        self.configure()
+        self.write(
+            ".codex/config.toml",
+            self.valid_root().replace(
+                'sandbox_mode = "workspace-write"',
+                'sandbox_mode = "danger-full-access"',
+            ),
+        )
+        self.write(
+            ".codex/agents/vault-reviewer.toml",
+            self.valid_agent().replace(
+                'approval_policy = "never"',
+                'approval_policy = "on-request"',
+            ),
+        )
+
+        errors = validate_vault.codex_agent_errors()
+
+        self.assertTrue(any("sandbox_mode must remain 'workspace-write'" in e for e in errors))
+        self.assertTrue(any("approval_policy must remain 'never'" in e for e in errors))
 
 
 class MissingConfigurationTests(unittest.TestCase):

@@ -7,7 +7,7 @@ Create or propose a Source that binds every local file through an `assets` front
 Compute hashes without loading the whole file into memory:
 
 ```sh
-python -c 'import hashlib, pathlib, sys; print(hashlib.file_digest(pathlib.Path(sys.argv[1]).open("rb"), "sha256").hexdigest())' "Assets/report file.pdf"
+uv run --locked python -c 'import hashlib, pathlib, sys; print(hashlib.file_digest(pathlib.Path(sys.argv[1]).open("rb"), "sha256").hexdigest())' "Assets/report file.pdf"
 ```
 
 Every live Source Asset reference must match a declared `assets[].path`. Filenames containing spaces support these forms:

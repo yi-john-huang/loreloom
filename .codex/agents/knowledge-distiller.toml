@@ -1,8 +1,6 @@
 name = "knowledge-distiller"
 description = "Atomic-note specialist for proposing cited Knowledge drafts from authorized Sources while detecting duplicates and uncertain claims."
 nickname_candidates = ["Prism", "Facet", "Quill"]
-model = "gpt-5.6-terra"
-model_reasoning_effort = "max"
 sandbox_mode = "read-only"
 approval_policy = "never"
 developer_instructions = """

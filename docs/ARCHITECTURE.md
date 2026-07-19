@@ -13,7 +13,7 @@ Capture is fast and permissive. Inbox items may be incomplete, duplicated, or un
 ### Evidence: `Sources/`
 
 Source records describe where information came from. They may bind local attachments or record absolute HTTP(S) locations. Preserve the original meaning and distinguish quotations from summaries. Copyrighted material should normally remain outside a public repository; store metadata and a link instead.
-Source intake begins at `status: processing`, `review_status: needs-review`, and `reviewed: null`. The owner verifies provenance, current Asset hashes, rights, fidelity, and machine-assisted limitations, then reviews directly or initiates an exact signed `source_review`.
+Source intake begins at `status: processing`, `review_status: needs-review`, and `reviewed: null`. The owner verifies provenance, current Asset hashes, rights, fidelity, and machine-assisted limitations, then reviews directly. Exact signed `source_review` is an advanced alternative.
 
 Immediately after review and before distillation, revalidate current Asset bytes. Once captured and reviewed, a Source is append-only by default; corrections use dated Amendments rather than silently rewriting history.
 
@@ -68,7 +68,7 @@ The lifecycle is not fully automatic:
 
 1. An owner supplies a local Asset, records an absolute HTTP(S) URL, or captures an Inbox/Daily item.
 2. Manual intake or `$capture-vault-source` creates an editable Source in `status: processing`.
-3. The owner verifies provenance, hashes, rights, and fidelity, then reviews directly or authorizes signed `source_review`.
+3. The owner verifies provenance, hashes, rights, and fidelity, then reviews directly; signed `source_review` is an advanced alternative.
 4. `validate_vault.py` immediately revalidates every bound Asset against current bytes.
 5. `$distill-vault-sources` reads only owner-reviewed, revalidated Sources and creates cited `status: draft` Concepts.
 6. The owner verifies every important claim and citation before optional evergreen promotion.

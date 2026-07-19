@@ -39,7 +39,7 @@ Asset objects use vault-relative paths such as `Assets/report.pdf`. `media_type`
 
 Body references to bound Assets may use Obsidian embeds or links. For filenames containing spaces, use `![[Assets/report file.pdf]]`, `[[Assets/report file.pdf]]`, `[report](<Assets/report file.pdf>)`, or percent-encoded destinations such as `[report](Assets/report%20file.pdf)`; raw unbracketed spaces and Markdown link titles are unsupported.
 
-Source state is intentionally gated: `status: processing` requires `review_status: needs-review` and `reviewed: null`; `status: captured` requires `review_status: reviewed` and a non-null review date. The owner performs this transition directly or initiates an exact signed `source_review`; agents never attest review. Revalidate current Asset bytes immediately afterward and before distillation. The legacy `processed` field is invalid.
+Source state is intentionally gated: `status: processing` requires `review_status: needs-review` and `reviewed: null`; `status: captured` requires `review_status: reviewed` and a non-null review date. The owner performs this transition directly by default; an exact signed `source_review` is an advanced trusted-UI/multi-agent alternative. Agents never attest review. Revalidate current Asset bytes immediately afterward and before distillation. The legacy `processed` field is invalid.
 
 ### Concept
 

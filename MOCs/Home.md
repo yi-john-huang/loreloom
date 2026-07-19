@@ -16,11 +16,11 @@ agent: codex
 
 ## Start here
 
-- Capture quickly in [[Inbox/README|Inbox]] or today's Daily note.
-- Start evidence from an owner-controlled [[Assets/README|Asset]] or a recorded absolute HTTP(S) URL.
-- Create an editable processing [[Sources/README|Source]], then complete owner review and current-byte Asset revalidation before distillation.
-- Review draft claims and citations before promoting [[Knowledge/README|Knowledge]].
-- Read generated synthesis in [[Wiki/README|Wiki]].
+- Follow the one-cycle tutorial in [Build your personal vault](../docs/BUILD_YOUR_VAULT.md).
+- Start with one owner-controlled [[Assets/README|Asset]] and one editable processing [[Sources/README|Source]].
+- Complete direct owner Source review and current-byte Asset revalidation before distillation.
+- Create one draft [[Knowledge/README|Concept]], review its claim and citation, and link it from a useful MOC.
+- Add Inbox, Daily, Wiki, sync, or advanced custom agents only after the first cycle works.
 
 ## Example topics
 

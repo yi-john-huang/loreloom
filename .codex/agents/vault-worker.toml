@@ -1,8 +1,6 @@
 name = "vault-worker"
 description = "General read-only worker that turns one bounded task into an implementation-ready proposal for the root agent."
-nickname_candidates = ["Terra", "Craft", "Patch"]
-model = "gpt-5.6-terra"
-model_reasoning_effort = "max"
+nickname_candidates = ["Craft", "Patch"]
 sandbox_mode = "read-only"
 approval_policy = "never"
 developer_instructions = """

@@ -11,7 +11,7 @@ Markdown notes and YAML frontmatter
 JSON Schema + semantic and wikilink validation
                 |
                 v
-Git diff/snapshot authority validation
+Read-only readiness doctor
                 |
                 v
 Human review, commit, and GitHub Actions
@@ -26,7 +26,7 @@ There is no application server, database, API, container, compiled bundle, or pr
 | Durable content | UTF-8 Markdown | Portable note storage |
 | Metadata | YAML frontmatter | Lifecycle, provenance, ownership, and review state |
 | Relationships | Obsidian wikilinks | Vault-root knowledge graph links |
-| Authoring | Obsidian or any Markdown editor | Obsidian is optional; no community plugin is required |
+| Authoring | Obsidian or any Markdown editor | Committed portable core defaults; no community plugin required |
 | Schema | JSON Schema Draft 2020-12 | Machine-readable frontmatter contract |
 | Validation language | Python | Vault and change-boundary command-line tools |
 | Environment manager | uv | Python installation, dependency sync, and locked execution |
@@ -66,6 +66,10 @@ The complete cross-platform environment is pinned in `uv.lock`. When intentional
 - Templates are authoring scaffolds, not schema instances.
 - Standard Markdown and YAML compatibility takes priority over plugin-specific behavior.
 
+### Readiness Doctor
+
+`scripts/doctor_vault.py` is a stdlib-first, read-only command. It checks Python, Git, uv, locked validation dependencies, exact worktree root, framework paths, origin privacy, portable Obsidian settings, and the complete vault validator. `--advanced` adds POSIX/WSL guarded-change and approval-key checks without generating or exposing keys.
+
 ### Vault Validator
 
 `scripts/validate_vault.py` checks:
@@ -80,7 +84,7 @@ The complete cross-platform environment is pinned in `uv.lock`. When intentional
 
 Ignored local SDD tooling is deliberately excluded from repository agent/skill validation.
 
-### Change Validator
+### Advanced Change Validator
 
 `scripts/validate_change.py` compares the final filesystem with both an immutable pre-task Git commit and a one-time preflight snapshot. It enforces:
 
@@ -98,24 +102,24 @@ Approval helpers require Python isolated mode (`python -I`) so the tool's `scrip
 
 - `AGENTS.md` and `.agents/policies/vault-policy.md` define authority.
 - `.agents/` contains model-independent policies, prompts, skills, and workflows.
-- `.codex/agents/` contains read-only specialist definitions.
-- `.codex/config.toml` declares the root as the default writer, limits delegation depth and concurrency, and disables workspace network access by default. Policy and effective sandbox verification remain necessary because live runtime overrides can supersede configuration defaults.
+- `.codex/agents/` contains optional model-neutral read-only role definitions; omitted model preferences inherit the active Codex session.
+- `.codex/config.toml` declares a model-neutral root as the default sequential writer, limits advanced delegation depth and concurrency, and disables workspace network access by default. Policy and effective sandbox verification remain necessary because live runtime overrides can supersede configuration defaults.
 - `.spec/steering/` supplies project context for Spec-Driven Development but cannot override repository policy.
 
 ## Development Commands
 
 ```sh
-# Install the selected Python version and locked development environment
-uv sync --locked --dev
+# One-command private-template readiness check
+uv run --locked python scripts/doctor_vault.py
 
 # Validate managed notes, wikilinks, hygiene, agents, and repository skills
-uv run python scripts/validate_vault.py
+uv run --locked python scripts/validate_vault.py
 
 # Run all validator and guardrail tests
-uv run python -m unittest discover -s tests -v
+uv run --locked python -m unittest discover -s tests -v
 ```
 
-For a multi-agent mutation, record the full commit before work and use one exact allowed path per output:
+For an owner-approved advanced multi-agent mutation, record the full commit before work and use one exact allowed path per output:
 
 ```sh
 git rev-parse HEAD
@@ -139,10 +143,10 @@ Never regenerate the preflight snapshot after work begins or change the final al
 
 ## Testing and Quality Gates
 
-- GitHub Actions runs on every push and pull request with its GitHub token limited to `contents: read`; checked-out files remain writable to job steps.
-- CI installs Python through uv, performs `uv sync --locked --dev`, runs the vault validator, and executes the full `unittest` suite.
+- GitHub Actions retains the full Ubuntu Python 3.13 validator and guardrail job.
+- A core portability matrix runs the doctor and core validator tests on Ubuntu, macOS, and Windows with Python 3.11 and 3.13; native Windows does not run the POSIX guarded-change suite.
 - Tests use temporary Git repositories and filesystem fixtures to verify real boundary behavior.
-- Add regression coverage with every schema, validator, policy-enforcement, or approval-flow change.
+- Add regression coverage with every schema, doctor, validator, policy-enforcement, or approval-flow change.
 - No linter, static type checker, coverage threshold, development server, or build command is currently configured; do not invent one in requirements or task plans.
 
 ## Error Handling

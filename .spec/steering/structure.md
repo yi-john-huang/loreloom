@@ -22,10 +22,12 @@ loreloom/
 ├── schemas/
 │   └── frontmatter.schema.json
 ├── scripts/
+│   ├── doctor_vault.py
 │   ├── validate_vault.py
 │   ├── validate_change.py
 │   └── create_approval_receipt.py
 ├── tests/
+│   ├── test_doctor_vault.py
 │   ├── test_validate_vault.py
 │   └── test_validate_change.py
 ├── docs/                  # Architecture, conventions, privacy, and workflows
@@ -34,9 +36,10 @@ loreloom/
 │   ├── prompts/           # Copyable bounded task contracts
 │   ├── skills/            # Reusable repository workflows
 │   └── workflows/         # Detailed lifecycle transformations
+├── .obsidian/             # Portable core settings; device state remains ignored
 ├── .codex/
-│   ├── agents/            # Project-scoped read-only specialist definitions
-│   └── config.toml        # Root orchestration and sandbox configuration
+│   ├── agents/            # Optional model-neutral read-only role definitions
+│   └── config.toml        # Model-neutral root sandbox configuration
 ├── .spec/
 │   └── steering/          # Versioned SDD project context
 ├── .github/               # Issue/PR templates and validation workflow
@@ -87,7 +90,7 @@ Only `.spec/steering/` supplies shared project context. Other locally generated 
 - Module constants use `UPPER_SNAKE_CASE`.
 - Public functions and methods use explicit parameter and return annotations.
 - Resolve repository paths from `Path(__file__)`; do not depend on the caller’s current directory.
-- Validators remain focused command-line modules. There is no application package, server entry point, or build-output directory.
+- Doctor and validator scripts remain focused command-line modules. There is no application package, server entry point, or build-output directory.
 - Keep subprocess arguments as lists, set an explicit working directory, and capture output where diagnostics need inspection.
 
 ## Testing Conventions
@@ -110,13 +113,11 @@ Only `.spec/steering/` supplies shared project context. Other locally generated 
 
 ## Agent and Change Boundaries
 
-- The root coordinator owns scope, decisions, writes, validation, and final reporting.
-- Custom specialists remain read-only and receive exact, disjoint inputs and a required return format.
-- Keep one filesystem writer, at most three concurrent specialists, four total threads, and one level of delegation.
+- The root runs bounded lifecycle work sequentially and owns scope, decisions, writes, validation, and final reporting.
+- Custom roles are owner-approved advanced options; they remain read-only and receive exact, disjoint inputs and a required return format.
+- Advanced delegation keeps one writer, at most three concurrent roles, four total threads, and one level of delegation.
 - Agent agreement is not evidence; reconcile factual disputes against original Sources.
-- Before a multi-agent mutation, capture an immutable 40-character base commit and create one preflight snapshot with an exact `--allow` entry for every authorized output.
-- Apply one accepted change set at a time, validate against the same base and snapshot, and request independent review for material changes.
-- Never create or alter a protected approval receipt as an agent.
+- Owner-approved multi-agent mutations use an immutable base, exact allow-list, preflight snapshot, detached final validation, and optional owner-created receipts. Ordinary root mutations use exact user scope plus the vault validator.
 
 ## SDD Steering Role
 

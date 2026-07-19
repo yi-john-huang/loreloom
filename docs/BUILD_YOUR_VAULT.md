@@ -1,198 +1,165 @@
 # Build your personal vault
 
-This guide turns a clean Loreloom template into a private, working Obsidian vault. You do not need to design the complete knowledge system before you begin. Start with a few real notes, keep the lifecycle folders stable, and let the structure grow from use.
+This is the single end-to-end first-use guide. Complete one local evidence cycle before adding sync, plugins, custom agents, signed approvals, or a large taxonomy.
 
-## 1. Keep the framework and your vault separate
+## 1. Create a private template copy
 
-Use two repositories:
-
-1. the public Loreloom framework, containing generic documentation, templates, examples, and automation;
-2. your private personal vault, containing your notes, sources, projects, daily records, and attachments.
-
-On GitHub, choose **Use this template -> Create a new repository** and select **Private**. A template-created repository has independent history. Do not use a public fork for personal notes, and do not add private notes directly to the public framework checkout.
-
-Clone your new private repository:
+1. On GitHub, choose **Use this template → Create a new repository**.
+2. Select **Private**. Do not use a public fork for personal notes.
+3. Clone the new repository by HTTPS or SSH and enter its root.
+4. Install Git and [uv](https://docs.astral.sh/uv/getting-started/installation/) from their official installers.
 
 ```sh
-git clone git@github.com:YOUR-NAME/YOUR-PRIVATE-VAULT.git my-vault
-cd my-vault
-uv sync --locked --dev
-uv run python scripts/validate_vault.py
+git --version
+uv --version
+uv run --locked python scripts/doctor_vault.py
 ```
 
-If you are starting locally, copy the framework into a new folder and configure a private remote before adding personal material.
+Continue only when the final line is `Core readiness: READY`. The doctor is read-only: it does not install tools, change remotes, write settings, create notes, or generate keys. A warning means the repository's privacy cannot be proved from its remote URL; confirm privacy in your hosting service.
 
-## 2. Open the repository in Obsidian
+## 2. Open the vault in Obsidian
 
-In Obsidian, select **Open folder as vault** and choose the repository root—the folder containing `AGENTS.md`, `Inbox/`, `Knowledge/`, and the other lifecycle directories.
+Choose **Open folder as vault** and select the repository root—the folder containing `AGENTS.md`, `Assets/`, `Sources/`, and `Knowledge/`.
 
-Recommended core settings:
+The template already:
 
-- enable **Automatically update internal links**;
-- set the attachment folder to `Assets/`;
-- enable **Properties view** for YAML frontmatter;
-- enable **Templates** and set its folder to `Templates/`;
-- enable **Daily notes**, set its folder to `Daily/`, and use `YYYY-MM-DD` as the date format.
+- updates internal links after renames;
+- sends attachments to `Assets/`;
+- enables Properties, Templates, and Daily Notes;
+- uses `Templates/` for templates;
+- creates daily notes under `Daily/YYYY-MM-DD.md` from `Templates/Daily.md`.
 
-Community plugins are optional. Add them only after the plain-Markdown workflow works, and remember that a plugin can read the entire vault.
+No community plugin is required. To confirm the baseline, run **Daily Notes: Open today's daily note**, then use **Templates: Insert template** in a disposable note.
 
-## 3. Understand where notes belong
+## 3. Understand the lifecycle
 
-Choose a location by the note's role, not its subject:
+Choose folders by a note's role, not its subject:
 
-| You have | Put it in | Example |
-|---|---|---|
-| Something captured but not processed | `Inbox/` | A quick conference idea |
-| A chronological observation | `Daily/` | What you learned today |
-| A local PDF, image, HTML, audio, video, or other binary | `Assets/` | An owner-supplied report or photo |
-| Original or faithfully recorded evidence | `Sources/` | An article, meeting record, or book note |
-| One durable, cited idea | `Knowledge/` | “IAM roles use temporary credentials” |
-| A generated overview from Knowledge | `Wiki/` | “AWS identity fundamentals” |
-| A navigation page | `MOCs/` | “Technology” or “Japan” |
-| A time-bound outcome | `Projects/` | “Prepare for AWS Summit” |
-| An ongoing responsibility | `Areas/` | “Career development” |
-| Inactive material worth retaining | `Archive/` | A completed project |
+| You have | Put it in |
+|---|---|
+| Owner-controlled local evidence | `Assets/` |
+| Faithful evidence record | `Sources/` |
+| One durable cited claim | `Knowledge/` |
+| Generated synthesis | `Wiki/` |
+| Navigation | `MOCs/` |
+| Quick capture or chronology | `Inbox/` or `Daily/` |
+| Time-bound outcome or ongoing responsibility | `Projects/` or `Areas/` |
 
-Do not create top-level folders such as `Tech/`, `Food/`, or `Travel/`. Keep those subjects connected through MOCs, links, aliases, and tags so one note can participate in several topics.
+Keep subjects in links, aliases, tags, and MOCs. Do not add top-level topic folders.
 
-## 4. Personalize the empty vault
+## 4. Complete the first evidence cycle
 
-Start with a small amount of structure:
+The steps below use a small synthetic local Asset so the complete path is reproducible. You may instead choose another owner-controlled local file, but never add confidential or copyrighted material to the public framework checkout.
 
-1. Edit `MOCs/Home.md` with three to five subjects you expect to revisit.
-2. Add only current, outcome-oriented Projects.
-3. Add Areas for responsibilities you intend to maintain.
-4. Review `AGENTS.md` and adjust owner-specific rules without weakening provenance, privacy, or human-review gates.
-5. Keep the examples during onboarding. When ready, replace every link under `Example topics` and `Action` in `MOCs/Home.md`, remove the `Examples/` subdirectories, and run `uv run python scripts/validate_vault.py` to catch any link you missed.
+### 4.1 Add one local Asset
 
-Avoid building a large taxonomy in advance. A useful MOC can begin with two links and a sentence explaining why they belong together.
-
-## 5. Complete one knowledge cycle
-
-Use one real item to learn the system end to end.
-
-### Capture
-
-Create an Inbox note from `Templates/Inbox.md`. Write enough context for your future self to understand why it matters.
-
-### Collect evidence
-
-Choose either an owner-controlled local Asset, an absolute HTTP(S) URL, or both. For a local PDF, image, HTML file, recording, video, or other binary, place it under `Assets/`, keep the filename stable, and record rights or sharing constraints. Use the streaming SHA-256 command and space-safe link forms in [[Assets/README|Assets]]. Do not execute active content.
-
-### Create and review the Source
-
-For manual intake, create a note from `Templates/Source.md`; bind each exact Asset path and current SHA-256, or record an absolute HTTP(S) URL without fetching it. URL-only intake does not promise reachability, freshness, or extraction. For semi-automatic intake, use `$capture-vault-source` on exact existing Assets or URLs. Both routes create only editable `status: processing`, `review_status: needs-review`, `reviewed: null` Sources.
-
-The owner verifies provenance, current hashes, rights, fidelity, and machine-assisted limitations, then reviews directly or initiates an exact signed `source_review`. Immediately run `uv run python scripts/validate_vault.py`; stop before distillation on any bound-Asset error.
-
-### Preserve the evidence
-
-Keep every original Asset unchanged. A Source binds it through structured `assets` frontmatter and may use the space-safe references documented in [[Assets/README|Assets]]. Reviewed Sources are append-only; record authorized corrections as dated Amendments and put interpretation in Knowledge.
-
-### Distill one concept
-
-Only after Source review and current-byte revalidation, create a note from `Templates/Concept.md` for one durable claim. Keep it at `status: draft`, set conservative confidence, add an actual `[[Sources/...]]` or `[[Daily/...]]` evidence link, and have the owner review every claim and citation before promotion.
-
-### Connect it
-
-Link the concept from one relevant MOC and add only relationships that help navigation or understanding. Do not mass-link matching keywords.
-
-### Synthesize when useful
-
-Create a Wiki page only when several Knowledge notes answer a broader question. Declare its Knowledge inputs and keep the page generated and reviewable. Wiki pages summarize canonical Knowledge; they are not evidence themselves.
-
-## 6. Introduce Codex safely
-
-Open Codex at the vault root. Begin with a read-only onboarding request:
+Create `Assets/First cycle.txt` with the exact UTF-8 bytes:
 
 ```text
-Read AGENTS.md, .agents/policies/vault-policy.md, and
-docs/BUILD_YOUR_VAULT.md. Audit this vault without changing files. Propose a
-minimal personalization plan, identify the examples I can remove later, and
-do not infer personal facts.
+Fixed retry intervals can synchronize client attempts.
 ```
 
-```text
-Use $capture-vault-source on Assets/My report.pdf or https://example.com/report.
-Start read-only, propose the exact Source path and metadata, record URLs without
-fetching them, overwrite nothing, create no Knowledge, and label machine-assisted extraction.
+The file must end with one newline. Compute its SHA-256 without loading it into an editor:
+
+```sh
+uv run --locked python -c "import hashlib, pathlib; p=pathlib.Path('Assets/First cycle.txt'); print(hashlib.file_digest(p.open('rb'), 'sha256').hexdigest())"
 ```
 
-Then use the narrowest repository skill for the task:
+Keep the file unchanged after recording the digest.
 
-```text
-Use $triage-vault-inbox on Inbox/My capture.md. Start read-only and show the
-recommended disposition before changing anything.
+### 4.2 Create a processing Source
+
+Use **Templates: Insert template** with `Source`, or ask the root Codex agent to apply `$capture-vault-source` to the exact Asset path. Create `Sources/Fixed retry interval observation.md` with:
+
+- `title: Fixed retry interval observation`;
+- `status: processing`;
+- `source_type: personal-observation`;
+- `source_url: ""` and `inbox_source: null`;
+- `review_status: needs-review` and `reviewed: null`;
+- one Asset object:
+
+```yaml
+assets:
+  - path: Assets/First cycle.txt
+    media_type: text/plain
+    role: primary
+    sha256: <the computed lowercase digest>
+    extraction_status: extracted
 ```
 
-```text
-Use $distill-vault-sources on Sources/My source.md. Propose the fewest atomic
-Knowledge drafts, cite exact evidence, and do not promote anything to
-evergreen.
+In the body, faithfully record the sentence and use `line 1` as its locator. Do not add a general conclusion that the Asset does not state.
+
+Run:
+
+```sh
+uv run --locked python scripts/validate_vault.py
 ```
 
-```text
-Use $connect-vault-notes on these exact Knowledge and MOC paths. Suggest only
-meaningful relationships and do not merge, rename, or delete notes.
+### 4.3 Perform direct owner review
+
+The owner—not an agent—checks the path, current hash, rights, faithful text, and locator. Then edit only the review fields to:
+
+```yaml
+status: captured
+review_status: reviewed
+reviewed: YYYY-MM-DD
 ```
 
-Use `$regenerate-vault-wiki` for a declared Wiki synthesis, `$audit-vault-health` for a read-only review, and `$orchestrate-vault-work` only when a task genuinely has multiple independent workstreams.
+Replace `YYYY-MM-DD` with the current local date and run the validator again. Any missing, unreadable, unsafe, or hash-drifted bound Asset blocks distillation.
 
-Agents may draft Knowledge. You remain responsible for checking evidence and approving evergreen status, reviewed Wiki conclusions, archival, deletion, publication, commits, and pushes.
+### 4.4 Create one draft Concept
 
-## 7. Establish a simple rhythm
+Use **Templates: Insert template** with `Concept`, or let the root agent run `$distill-vault-sources` on the exact reviewed Source. Create `Knowledge/Fixed retry intervals can synchronize clients.md` with:
 
-A sustainable routine is more valuable than aggressive automation.
+- `status: draft`;
+- `confidence: medium` for this single personal observation;
+- `reviewed: null`;
+- `sources: ["[[Sources/Fixed retry interval observation]]"]`;
+- one claim that stays within the Source wording.
 
-### Daily
+Agents may draft the note, but only the owner may approve its claim, citation, or promotion to `evergreen`.
 
-- capture quickly in Inbox or Daily;
-- add context and provenance while it is fresh;
-- avoid reorganizing the whole vault during capture.
+### 4.5 Link one MOC
 
-### Weekly
+Add the Concept link to `MOCs/Examples/Technology.md` with a short relationship phrase. Do not mass-link keywords or create placeholder notes.
 
-- triage a bounded set of Inbox notes;
-- promote useful observations into cited Knowledge drafts;
-- update one or two MOCs;
-- review active Projects and Areas;
-- run `uv run python scripts/validate_vault.py`;
-- inspect the Git diff before committing.
+Run the validator once more. The first cycle is complete when it passes and the Source, Concept, and MOC link all open in Obsidian.
 
-### Monthly
+## 5. Personalize with one bootstrap prompt
 
-- review orphaned or stale notes;
-- regenerate important Wiki pages from their declared inputs;
-- archive completed Projects with explicit approval;
-- test that your backup can actually be restored.
+For optional read-only help, copy [.agents/prompts/00-bootstrap-vault.md](../.agents/prompts/00-bootstrap-vault.md). It is the sole onboarding prompt. Supply only topics you actually want; the agent must not infer private facts.
 
-## 8. Choose sync and backup deliberately
+Keep example notes until the first cycle works. Later, remove only exact example paths you have reviewed and update links in `MOCs/Home.md`.
 
-Use one real-time file-sync system for the vault. Obsidian Sync or an Apple-only iCloud setup can handle device synchronization; Git provides version history and review, not real-time coordination.
+## 6. Add optional workflows gradually
 
-Do not point two real-time sync services at the same vault. Avoid editing the same note simultaneously on multiple devices, wait for file synchronization before Git operations, and keep at least one recoverable backup outside the live sync folder.
+After the first cycle:
 
-## 9. Protect personal material
+1. use Inbox or Daily for quick capture;
+2. use URL-only Source intake when a URL is exact and should be recorded without fetching;
+3. add Wiki synthesis only after several cited Knowledge notes exist;
+4. choose one real-time sync service and one recoverable backup;
+5. consider owner-approved custom-agent delegation only when independent read-only tracks materially help.
+
+The root agent runs lifecycle skills sequentially by default and inherits the model available in the active Codex session. Custom agents, detached validation, signed `source_review`, and approval receipts are advanced POSIX workflows; native Windows users run that guarded path in WSL. See [Advanced multi-agent execution](MULTI_AGENT.md).
+
+## 7. Ongoing safety
 
 - Keep the personal repository private.
-- Store secrets in a password manager, not in Markdown.
-- Treat `.gitignore` as convenience rather than a security boundary.
-- Inspect staged files and history before every push.
-- Do not copy entire copyrighted sources into a public repository.
-- Re-create generic framework improvements in the public Loreloom checkout with synthetic examples; never merge personal-vault history upstream.
+- Store secrets in a password manager, not Markdown.
+- Treat `.gitignore` as convenience, not a security boundary.
+- Preserve reviewed Sources; put interpretation in Knowledge.
+- Require direct human review for evergreen promotion and material Wiki conclusions.
+- Inspect changes before commits or pushes.
+- Never merge personal-vault history into the public framework.
 
-## 10. First-week checklist
+## First-cycle checklist
 
 - [ ] Private repository created from the template.
-- [ ] Repository root opens correctly as an Obsidian vault.
-- [ ] `uv sync --locked --dev` and validation succeed.
-- [ ] `MOCs/Home.md` reflects a few real interests.
-- [ ] One Daily or Inbox note has been captured.
-- [ ] One owner-controlled Asset or absolute HTTP(S) URL has a processing Source with complete provenance.
-- [ ] The Source has completed owner review and current-byte Asset revalidation.
-- [ ] One cited Knowledge draft has been created and linked.
-- [ ] Codex has completed a read-only audit before being allowed to write.
-- [ ] One sync system and one recoverable backup are configured.
-- [ ] The Git diff has been reviewed before the first personal commit.
-
-Once this cycle feels natural, expand gradually. The goal is not to fill every directory; it is to create a trustworthy path from raw experience and evidence to connected, reviewable knowledge.
+- [ ] Doctor reports `Core readiness: READY`.
+- [ ] Repository root opens in Obsidian with portable settings.
+- [ ] One local Asset is bound to a processing Source.
+- [ ] The owner directly reviews the Source and current Asset bytes revalidate.
+- [ ] One cited draft Concept exists.
+- [ ] One MOC links the Concept.
+- [ ] Vault validation passes.

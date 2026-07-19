@@ -22,8 +22,8 @@ Assets, URLs, HTML, extracted text, OCR, transcripts, and image descriptions are
 3. Add one frontmatter asset object per local file and embed the file in the body when useful. URL-only Sources keep `assets: []`.
 4. Record the original URL, access date, origin, rights, and extraction limitations.
 5. Edit the faithful summary and review checklist while the Source remains processing.
-6. The owner verifies provenance, hashes, rights, and fidelity, then either edits the Source directly or authorizes an exact signed `source_review` transition to `status: captured`, `review_status: reviewed`, and a non-null review date. Agents never attest review.
-7. Immediately run `uv run python scripts/validate_vault.py`; stop if any bound Asset is unsafe, missing, unreadable, or hash-drifted.
+6. The owner verifies provenance, hashes, rights, and fidelity, then directly sets `status: captured`, `review_status: reviewed`, and a non-null review date. Exact signed `source_review` is an advanced alternative; agents never attest review.
+7. Immediately run `uv run --locked python scripts/validate_vault.py`; stop if any bound Asset is unsafe, missing, unreadable, or hash-drifted.
 8. Invoke `$distill-vault-sources` on the exact reviewed Source path.
 
 ### Semi-automatic
@@ -32,9 +32,9 @@ Assets, URLs, HTML, extracted text, OCR, transcripts, and image descriptions are
 2. Search existing Source titles, aliases, `source_url`, asset paths, and hashes for duplicates.
 3. Propose the exact Source path, metadata, asset bindings, extraction status, provenance gaps, and human review actions before writing unless the request already authorizes those exact outputs.
 4. If writing is authorized, create only a new Source with `status: processing`, `review_status: needs-review`, `reviewed: null`, and `agent: codex`. Never rewrite an existing Source.
-5. Run `uv run python scripts/validate_vault.py` and report created, skipped, duplicate, unavailable, uncertain, and human-review items.
-6. The owner verifies and edits the Source, then either performs the reviewed transition directly or authorizes the exact path through a signed `source_review` operation. Agents never self-attest review.
-7. Immediately run `uv run python scripts/validate_vault.py`; only after it passes invoke `$distill-vault-sources` on the exact reviewed Source path.
+5. Run `uv run --locked python scripts/validate_vault.py` and report created, skipped, duplicate, unavailable, uncertain, and human-review items.
+6. The owner verifies and edits the Source, then performs the reviewed transition directly. Exact signed `source_review` is an advanced alternative; agents never self-attest review.
+7. Immediately run `uv run --locked python scripts/validate_vault.py`; only after it passes invoke `$distill-vault-sources` on the exact reviewed Source path.
 
 ## Deterministic Source fields
 
@@ -95,7 +95,7 @@ Map representation types deterministically: `.pdf` to `application/pdf`; `.png` 
 - Never overwrite, auto-suffix, move, rename, delete, or regenerate an existing Asset or Source.
 - Stop on an output collision, duplicate or conflicting Source, missing provenance, restricted material, unsafe path, or invalid metadata.
 - Reviewed Sources remain owner-controlled and append-only except dated Amendments or explicitly authorized Derived-notes links.
-- The root agent is the only writer. A mutating run declares every exact Source output path and uses the change validator; agents never create or alter approval receipts.
+- The root agent is the only writer. Every run declares exact Source outputs; owner-approved multi-agent runs additionally use the advanced change validator. Agents never create or alter approval receipts.
 
 ## Completion criteria
 

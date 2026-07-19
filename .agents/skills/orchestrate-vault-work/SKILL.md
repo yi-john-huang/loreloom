@@ -22,9 +22,9 @@ Keep the root agent responsible for scope, decisions, writes, validation, and th
 5. Verify no live parent permission override broadens child access. Spawn at most three subagents concurrently, require effective read-only access, and do not permit recursive delegation.
 6. Give each agent the minimum context needed: exact paths, question, prohibited actions, and return format. Do not include the expected answer.
 7. Wait for all assigned agents. Reconcile disagreements against Sources and policy; never resolve a factual conflict by majority vote.
-8. Before writing, record the immutable 40-character base commit and run `scripts/validate_change.py --check-clean --base <40-character-commit> --snapshot-file <absolute-temp-path>` with one exact `--allow` per authorized output path. Let only the root agent perform writes.
-9. Run `uv run python scripts/validate_vault.py` and `uv run python scripts/validate_change.py --base <40-character-commit> --snapshot-file <same-path>` with one exact `--allow` per changed path. Request an independent `vault-reviewer` pass for material changes.
-10. If a gated path needs approval, stop for an owner- or trusted-UI-created receipt under protected Git metadata. Never create or alter that receipt.
+8. Before writing, record the immutable 40-character base commit and run `uv run python -I scripts/validate_change.py --check-clean --base <40-character-commit> --snapshot-file <absolute-temp-path>` with one exact `--allow` per authorized output path. Let only the root agent perform writes.
+9. Run `uv run python scripts/validate_vault.py`, then run every final `uv run python -I scripts/validate_change.py --target-root <candidate-vault-root> ...` from a separate clean detached worktree at the immutable base with the same snapshot and every exact changed path. Request an independent `vault-reviewer` pass for material changes.
+10. If a gated path needs approval—including an exact processing-to-reviewed `source_review`—stop for an owner- or trusted-UI-created receipt under protected Git metadata. Never create or alter that receipt.
 11. Report assignments, accepted and rejected findings, changes, uncertainty, human review, and validation.
 
 ## Do not delegate

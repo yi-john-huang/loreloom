@@ -32,13 +32,14 @@ Edit `MOCs/Home.md` and add a few subjects that matter to you. Use tags and link
 
 Create Projects only for outcomes with an end condition. Create Areas for ongoing responsibilities. A subject such as “AWS” usually belongs in a MOC, not a Project or Area by default.
 
-## 5. Capture the first source
+## 5. Capture the first evidence and Source
 
-1. Create a Source note from `Templates/Source.md`.
-2. Record provenance and a short faithful summary; link rather than copy large copyrighted content.
-3. Run `.agents/prompts/02-distill-source.md` with the exact Source path.
-4. Review proposed Knowledge drafts and their citations.
-5. Promote a draft to evergreen only after checking the source yourself.
+1. Choose an owner-controlled local Asset, an absolute HTTP(S) URL, or both. Place local files under `Assets/`; URLs are recorded without fetching or implying reachability, freshness, or extraction.
+2. For manual intake, create a Source from `Templates/Source.md`; bind each exact Asset path and streaming SHA-256 or record the HTTP(S) URL. See [[Assets/README|Assets]] for the hash command and space-safe link forms.
+3. For semi-automatic intake, use `$capture-vault-source` on the exact Asset or URL. It creates only an editable `status: processing`, `review_status: needs-review`, `reviewed: null` Source and overwrites nothing.
+4. Verify provenance, current hashes, rights, faithful summary, and machine-assisted limitations. Review directly or initiate an exact signed `source_review`; agents never attest review.
+5. Immediately run `uv run python scripts/validate_vault.py`; any unsafe, missing, unreadable, or hash-drifted bound Asset blocks distillation.
+6. Run `$distill-vault-sources` only on the exact reviewed, revalidated Source path, then review every draft claim and citation before optional evergreen promotion.
 
 ## 6. Introduce Codex gradually
 

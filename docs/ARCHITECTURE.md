@@ -6,15 +6,16 @@ The vault stores many subjects in one graph while separating notes by lifecycle 
 
 ## Layers
 
-### Capture: `Inbox/` and `Daily/`
+### Capture: `Inbox/`, `Daily/`, and `Assets/`
 
-Capture is fast and permissive. Content here may be incomplete, duplicated, or untrusted. Inbox items should eventually be processed, deliberately deferred, or archived. Daily notes are an event log, not automatically durable truth.
+Capture is fast and permissive. Inbox items may be incomplete, duplicated, or untrusted; Daily notes are an event log, not automatically durable truth; and Assets holds owner-supplied binary evidence. `$capture-vault-source` turns exact Assets or absolute HTTP(S) URLs into editable Source intake notes without fetching URLs or overwriting resources; URL recording does not assert reachability, freshness, or extraction.
 
 ### Evidence: `Sources/`
 
-Source records describe where information came from. They may point to local attachments or external locations. Preserve the original meaning and distinguish quotations from summaries. Copyrighted material should normally remain outside a public repository; store metadata and a link instead.
+Source records describe where information came from. They may bind local attachments or record absolute HTTP(S) locations. Preserve the original meaning and distinguish quotations from summaries. Copyrighted material should normally remain outside a public repository; store metadata and a link instead.
+Source intake begins at `status: processing`, `review_status: needs-review`, and `reviewed: null`. The owner verifies provenance, current Asset hashes, rights, fidelity, and machine-assisted limitations, then reviews directly or initiates an exact signed `source_review`.
 
-Once captured, a Source note is append-only by default. Corrections are recorded in a dated `## Amendments` section rather than silently rewriting history.
+Immediately after review and before distillation, revalidate current Asset bytes. Once captured and reviewed, a Source is append-only by default; corrections use dated Amendments rather than silently rewriting history.
 
 ### Canonical knowledge: `Knowledge/`
 
@@ -51,19 +52,28 @@ Archive inactive material without erasing its provenance. Moving a note does not
 ## Promotion lifecycle
 
 ```text
-captured -> processing -> draft -> evergreen
-    |            |           |
-    +------------+-----------+-> archived
+Asset / HTTP(S) URL / Inbox / Daily
+                   |
+                   v
+Source processing -> owner review -> Asset revalidation -> Concept draft
+                                                           |
+                                                           v
+                                                owner claim/citation review
+                                                           |
+                                                           v
+                                             optional evergreen -> Wiki
 ```
 
 The lifecycle is not fully automatic:
 
-1. A human or agent captures an Inbox item or Source record.
-2. An agent can propose atomic Knowledge drafts with citations.
-3. A human verifies important claims and promotes drafts to `evergreen`.
-4. An agent regenerates relevant Wiki pages from reviewed Knowledge plus explicitly allowed drafts.
-5. MOCs receive links to useful new pages.
-6. Superseded or inactive content is archived, not destroyed.
+1. An owner supplies a local Asset, records an absolute HTTP(S) URL, or captures an Inbox/Daily item.
+2. Manual intake or `$capture-vault-source` creates an editable Source in `status: processing`.
+3. The owner verifies provenance, hashes, rights, and fidelity, then reviews directly or authorizes signed `source_review`.
+4. `validate_vault.py` immediately revalidates every bound Asset against current bytes.
+5. `$distill-vault-sources` reads only owner-reviewed, revalidated Sources and creates cited `status: draft` Concepts.
+6. The owner verifies every important claim and citation before optional evergreen promotion.
+7. An agent may regenerate relevant Wiki pages from reviewed Knowledge plus explicitly allowed drafts, and MOCs may receive useful links.
+8. Superseded or inactive content is archived, not destroyed.
 
 ## Topic model
 

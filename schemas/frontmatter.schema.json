@@ -57,7 +57,11 @@
             "source_type": {"enum": ["article", "book", "documentation", "paper", "video", "podcast", "meeting", "personal-observation", "dataset", "other"]},
             "source_url": {
               "anyOf": [
-                {"type": "string", "format": "uri"},
+                {
+                  "type": "string",
+                  "format": "uri",
+                  "pattern": "(?i)^https?://(?:[^/?#\\s@]+@)?(?:\\[[^\\]\\s]+\\]|[^/?#\\s:@]+)(?::[0-9]+)?(?:[/?#][^\\s]*)?$"
+                },
                 {"const": ""}
               ]
             },
@@ -74,9 +78,61 @@
               ]
             },
             "captured": {"type": "string", "format": "date"},
-            "processed": {"type": "boolean"}
+            "review_status": {"enum": ["needs-review", "reviewed"]},
+            "reviewed": {
+              "anyOf": [
+                {"type": "string", "format": "date"},
+                {"type": "null"}
+              ]
+            },
+            "inbox_source": {
+              "anyOf": [
+                {"type": "string", "pattern": "^\\[\\[Inbox/.+\\]\\]$"},
+                {"type": "null"}
+              ]
+            },
+            "assets": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "path",
+                  "media_type",
+                  "role",
+                  "sha256",
+                  "extraction_status"
+                ],
+                "properties": {
+                  "path": {"type": "string", "pattern": "^Assets/.+"},
+                  "media_type": {
+                    "anyOf": [
+                      {"type": "string", "minLength": 1},
+                      {"type": "null"}
+                    ]
+                  },
+                  "role": {"enum": ["primary", "supporting", "derived"]},
+                  "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+                  "extraction_status": {
+                    "enum": ["not-requested", "extracted", "partial", "unavailable"]
+                  }
+                }
+              }
+            }
           },
-          "required": ["source_type", "source_url", "author", "published", "captured", "processed"]
+          "not": {"required": ["processed"]},
+          "required": [
+            "status",
+            "source_type",
+            "source_url",
+            "author",
+            "published",
+            "captured",
+            "review_status",
+            "reviewed",
+            "assets"
+          ]
         },
         {
           "properties": {

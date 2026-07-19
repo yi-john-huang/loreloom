@@ -70,41 +70,139 @@ Parallel writes are prohibited on overlapping paths. For most vault tasks, all s
 
 ## Diff-aware enforcement
 
-The normal validator checks the current vault. Before a multi-agent mutation, record the immutable 40-character commit ID and require every authorized output path to match that commit. If a path already has changes, do not assign it until the owner resolves them:
+The normal validator checks the current vault. Before a multi-agent mutation, record the current `HEAD` as the immutable 40-character commit ID; the validator requires `--base` to remain that `HEAD` for the entire task and requires every authorized output path to match it. Both approval tools require Python isolated mode (`python -I`), which keeps the tool's `scripts/` directory off the import search path. If a path already has changes, do not assign it until the owner resolves them:
 
 ```sh
-uv run python scripts/validate_change.py --check-clean \
+uv run python -I scripts/validate_change.py --check-clean \
   --base 0123456789abcdef0123456789abcdef01234567 \
   --snapshot-file /tmp/loreloom-task-snapshot.json \
   --allow "Knowledge/Example concept.md" \
   --allow "MOCs/Technology.md"
 ```
 
-After writing, compare against that same commit rather than symbolic `HEAD`:
+After writing, run the final from a separate clean detached worktree at the same immutable commit, never from the candidate vault:
 
 ```sh
-uv run python scripts/validate_change.py --base 0123456789abcdef0123456789abcdef01234567 \
-  --snapshot-file /tmp/loreloom-task-snapshot.json \
-  --allow "Knowledge/Example concept.md" \
-  --allow "MOCs/Technology.md"
+(
+  cd "<clean-detached-tool-worktree-at-base>"
+  uv run python -I scripts/validate_change.py \
+    --target-root "<candidate-vault-root>" \
+    --base 0123456789abcdef0123456789abcdef01234567 \
+    --snapshot-file /tmp/loreloom-task-snapshot.json \
+    --allow "Knowledge/Example concept.md" \
+    --allow "MOCs/Technology.md"
+)
 ```
 
 The preflight snapshot hashes Git-visible and ignored files (excluding known volatile runtime state such as `.git`, `.venv`, Obsidian workspaces, and cache directories). It stores the exact allowed paths and creates a new mode-`0600` file without overwriting an existing snapshot. Use a fresh protected path for every task and never rerun preflight after work begins. The final validator therefore detects writes outside the declared paths even when Git ignores them and refuses a changed allow-list. It fails closed when no exact output paths are declared and rejects undeclared paths, Source changes, destructive operations, protected framework paths, archive transitions, changes to reviewed content, unapproved evergreen/reviewed transitions, and changed Wiki human blocks.
 
-Every gated override takes an exact path rather than a global Boolean. It also requires a short-lived approval receipt under `.git/loreloom-approvals/`. The receipt binds the immutable base, preflight snapshot hash, exact allowed paths, gated operations, expiry, and final path-and-content digest. Because normal agents cannot write protected Git metadata, the owner must create the receipt manually after reviewing the final diff, or a trusted approval UI may create it after an explicit confirmation. Agents must never create, edit, or replace receipts.
 
-From a human-controlled terminal, the approval step looks like this:
+### Configure signed approvals
+
+Before using a gated operation, the owner must install an approval key pair outside
+the vault and place only the public key plus its fingerprint in protected Git
+metadata:
 
 ```sh
-uv run python scripts/create_approval_receipt.py \
-  --approval-id approve-concept-20260718 \
-  --base 0123456789abcdef0123456789abcdef01234567 \
-  --snapshot-file /tmp/loreloom-task-snapshot.json \
-  --allow "Knowledge/Example concept.md" \
-  --allow-promotion "Knowledge/Example concept.md"
+umask 077
+set -C
+config_dir="$HOME/.config/loreloom"
+private_key="$config_dir/approval-private.pem"
+approval_dir="$(git rev-parse --git-path loreloom-approvals)"
+public_key="$approval_dir/approval-public-key.pem"
+fingerprint="$approval_dir/approval-public-key.sha256"
+mkdir -p "$config_dir" "$approval_dir"
+chmod 700 "$config_dir" "$approval_dir"
+for path in "$private_key" "$public_key" "$fingerprint"; do
+  if [ -e "$path" ] || [ -L "$path" ]; then
+    printf 'Refusing to overwrite %s\n' "$path" >&2
+    exit 1
+  fi
+done
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 > "$private_key"
+openssl pkey -in "$private_key" -pubout > "$public_key"
+python -c 'import hashlib, pathlib, sys; p=pathlib.Path(sys.argv[1]); print(hashlib.sha256(p.read_bytes()).hexdigest())' \
+  "$public_key" > "$fingerprint"
+chmod 600 "$private_key" "$public_key" "$fingerprint"
+export LORELOOM_APPROVAL_PRIVATE_KEY="$private_key"
 ```
 
-The helper displays the exact hashes and gated paths, requires the approval ID to be typed, creates a mode-`0600` receipt without overwriting an existing one, and expires it after 15 minutes by default. Then rerun the final validator with the same gated path flag plus `--approval-receipt approve-concept-20260718`. If the diff, snapshot, operation, allow-list, base, or expiry differs, validation fails. `--yes` is reserved for a trusted UI that already obtained a visible human confirmation.
+The validator reads the public key and fingerprint only from those fixed, protected Git-metadata paths; it never chooses a trust anchor from `--base` or an environment variable. The private key never belongs in the vault or Git history. Do not change approval metadata or commit during an agent task. Intentional key rotation happens outside a task: remove the old three artifacts deliberately, rerun the no-overwrite recipe, and begin again with a fresh current-`HEAD` preflight.
+
+Every gated override takes an exact path rather than a global Boolean and requires a short-lived, mode-`0600` approval receipt under `.git/loreloom-approvals/`. The receipt binds the immutable base, preflight snapshot hash, exact allowed paths, gated operations, expiry, final path-and-content digest, and an owner-generated RSA signature. The validator verifies that signature against the public key and fingerprint in the fixed protected Git metadata. Because normal agents cannot write protected Git metadata or access the owner-held private key, the owner must create the receipt manually after reviewing the final diff, or a trusted approval UI may create it after an explicit confirmation. Agents must never create, edit, or replace receipts.
+
+For every final validation, and for every gated receipt helper, run the tool from a separate, clean, detached worktree at the immutable base and point it at the candidate vault with `--target-root`. Never run a final or gated helper from the candidate worktree:
+
+```sh
+vault_root="$(git rev-parse --show-toplevel)"
+base=0123456789abcdef0123456789abcdef01234567
+tool_root="$(mktemp -d "${TMPDIR:-/tmp}/loreloom-approval-tool.XXXXXX")"
+rmdir "$tool_root"
+git -C "$vault_root" worktree add --detach "$tool_root" "$base"
+```
+
+The detached tool worktree must remain free of tracked changes and untracked files. It is the immutable validator and helper source; `--target-root` is the vault whose diff and protected Git metadata are checked.
+
+From a human-controlled terminal, create the receipt from that detached tool worktree:
+
+```sh
+(
+  cd "$tool_root"
+  uv run python -I scripts/create_approval_receipt.py \
+    --target-root "$vault_root" \
+    --approval-id approve-concept-20260718 \
+    --base "$base" \
+    --snapshot-file /tmp/loreloom-task-snapshot.json \
+    --allow "Knowledge/Example concept.md" \
+    --allow-promotion "Knowledge/Example concept.md"
+)
+```
+
+The helper displays the exact hashes and gated paths, requires the approval ID to be typed, creates a mode-`0600` receipt without overwriting an existing one, and expires it after 15 minutes by default. `--yes` is reserved for a trusted UI that already obtained a visible human confirmation. Rerun final validation from the same detached tool worktree:
+
+```sh
+(
+  cd "$tool_root"
+  uv run python -I scripts/validate_change.py \
+    --target-root "$vault_root" \
+    --base "$base" \
+    --snapshot-file /tmp/loreloom-task-snapshot.json \
+    --allow "Knowledge/Example concept.md" \
+    --allow-promotion "Knowledge/Example concept.md" \
+    --approval-receipt approve-concept-20260718
+)
+```
+
+An existing processing Source may reach reviewed state only through a direct owner edit outside agent authority or this exact signed operation. After the candidate Source has a complete `captured / reviewed / <date>` state and owner-approved content corrections, create and consume the receipt from the detached tool:
+
+```sh
+(
+  cd "$tool_root"
+  uv run python -I scripts/create_approval_receipt.py \
+    --target-root "$vault_root" \
+    --approval-id approve-source-review-20260719 \
+    --base "$base" \
+    --snapshot-file /tmp/loreloom-task-snapshot.json \
+    --allow "Sources/report.md" \
+    --allow-source-review "Sources/report.md"
+
+  uv run python -I scripts/validate_change.py \
+    --target-root "$vault_root" \
+    --base "$base" \
+    --snapshot-file /tmp/loreloom-task-snapshot.json \
+    --allow "Sources/report.md" \
+    --allow-source-review "Sources/report.md" \
+    --approval-receipt approve-source-review-20260719
+)
+```
+
+The owner or trusted UI—not an agent—confirms the receipt. Immediately run the vault validator against current Asset bytes before distillation.
+
+If the diff, snapshot, operation, allow-list, base, or expiry differs, validation fails. Remove the detached worktree only after final validation:
+
+```sh
+git -C "$vault_root" worktree remove --force "$tool_root"
+```
 
 ## Skill routing
 
@@ -112,6 +210,7 @@ The helper displays the exact hashes and gated paths, requires the approval ID t
 |---|---|---|
 | Complex multi-layer request | `$orchestrate-vault-work` | architect plus task roles plus reviewer |
 | Inbox processing | `$triage-vault-inbox` | source-reader |
+| Asset to Source | `$capture-vault-source` | source-reader only when an authorized attachment needs bounded extraction |
 | Source to Knowledge | `$distill-vault-sources` | source-reader, knowledge-distiller, optional architect |
 | Cross-topic links and MOCs | `$connect-vault-notes` | source-reader, optional architect |
 | Generated Wiki refresh | `$regenerate-vault-wiki` | source-reader, wiki-synthesizer, reviewer |

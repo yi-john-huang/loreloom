@@ -3,12 +3,13 @@ type: moc
 title: Home
 status: evergreen
 created: 2026-07-18
-updated: 2026-07-18
+updated: 2026-07-19
 tags: []
 aliases:
   - Start here
 scope: Primary navigation for the vault
 curation: human
+agent: codex
 ---
 
 # Home
@@ -16,8 +17,9 @@ curation: human
 ## Start here
 
 - Capture quickly in [[Inbox/README|Inbox]] or today's Daily note.
-- Preserve evidence in [[Sources/README|Sources]].
-- Build reviewed concepts in [[Knowledge/README|Knowledge]].
+- Start evidence from an owner-controlled [[Assets/README|Asset]] or a recorded absolute HTTP(S) URL.
+- Create an editable processing [[Sources/README|Source]], then complete owner review and current-byte Asset revalidation before distillation.
+- Review draft claims and citations before promoting [[Knowledge/README|Knowledge]].
 - Read generated synthesis in [[Wiki/README|Wiki]].
 
 ## Example topics

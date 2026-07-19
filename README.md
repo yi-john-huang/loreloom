@@ -63,6 +63,28 @@ Concept draft -> owner claim/citation review -> optional evergreen
 
 See [Architecture](docs/ARCHITECTURE.md) for the full lifecycle.
 
+## How Loreloom compares
+
+[Andrej Karpathy's LLM Wiki gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) is an intentionally abstract design pattern, Loreloom is the repository-and-vault framework documented here, and [Karpathy LLM Wiki](https://github.com/green-dalii/obsidian-llm-wiki) is Greener-Dalii's third-party Obsidian plugin inspired by the gist.
+
+| Dimension | Karpathy's LLM Wiki gist | Loreloom | Karpathy LLM Wiki plugin |
+|---|---|---|---|
+| Form | An intentionally abstract idea file/prompt whose user and agent design the implementation | A GitHub template and Obsidian vault with schemas, validators, policies, skills, and portable core settings | A third-party Obsidian community plugin that implements an AI-generated wiki |
+| First setup | Paste the gist into an agent and collaborate on structure and tooling | Create a private template copy, install Git and `uv`, run the read-only doctor, then open the repository root in Obsidian | Install and enable the plugin, then configure a supported cloud or local LLM provider |
+| Knowledge boundary | Raw sources are immutable; the LLM owns and maintains the derived wiki; human review policy is left to the implementation | Reviewed `Knowledge/` notes are canonical; agents may draft them, while `Wiki/` is regenerable synthesis from declared inputs | Original vault notes are not modified; generated pages live under `wiki/`, and `reviewed: true` protects a generated page from overwrite |
+| AI interface | Any external agent chosen by the user | The external root Codex session and terminal validators; no in-Obsidian AI command or query UI | Obsidian command-palette and side-panel workflows for ingest, query, lint, and maintenance |
+| Retrieval | `index.md` first, with optional search such as `qmd`; no retrieval implementation is required by the gist | Wikilinks, MOCs, declared Wiki inputs, and ordinary file search; no required embedding database or built-in query service | Lexical/LLM seed selection followed by Personalized PageRank over the generated wiki-link graph; no embedding index |
+| Governance | A co-evolved schema/instruction file; enforcement depends on the implementation the user builds | Frontmatter schema, provenance, Asset hashes, Source review, human promotion gates, Git review, and optional advanced signed approvals | Plugin settings, lint/maintenance operations, contradiction states, and reviewed-page overwrite protection |
+| Model and platform contract | Defined by the implementation the user chooses | Shipped Codex config has no model pin; core doctor/validator coverage runs on Ubuntu, macOS, and Windows with Python 3.11/3.13; advanced guarded changes require POSIX or WSL | The user configures a provider; [manifest metadata](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/manifest.json) declares Obsidian 1.11+ and `isDesktopOnly: false` |
+| Best fit | Building a minimal custom system from the original design pattern | Provenance-sensitive, Git-reviewed knowledge where human authority boundaries are the main requirement | Convenient in-Obsidian ingestion, generated-wiki navigation, and conversational query |
+
+Choose the gist to design a bespoke system, the plugin for in-Obsidian AI operations, or Loreloom when traceability and review boundaries are the primary requirement. Loreloom's contracts are detailed in [Architecture](docs/ARCHITECTURE.md), [Frontmatter schemas](docs/FRONTMATTER.md), and [Advanced multi-agent execution](docs/MULTI_AGENT.md).
+
+External plugin facts above were checked on 2026-07-20. Volatile release, download, star, and test counts are intentionally omitted; use the linked primary sources for current details. The [Obsidian community registry entry](https://github.com/obsidianmd/obsidian-releases/blob/master/community-plugins.json) currently says the plugin has not been manually reviewed by Obsidian staff. It is not authored by Obsidian or Andrej Karpathy.
+
+> [!WARNING]
+> Do not install Karpathy LLM Wiki into a Loreloom vault during onboarding. The plugin defaults to `wiki/`, while Loreloom manages `Wiki/`; those names can resolve to the same directory on case-insensitive filesystems, and the two generated layers follow different authority rules. Use separate vaults rather than combining them without a separately designed integration.
+
 ## Start your own vault
 
 1. On GitHub, choose **Use this template**, create a **private** repository, and do not include every branch. Use a fork only to contribute framework changes.

@@ -38,7 +38,7 @@ Route repeatable work through the narrowest matching repository skill:
 
 ## Authority by directory
 
-- `Sources/`: read-only evidence. Never rewrite, summarize in place, rename, or delete a source unless the user explicitly identifies the exact file and action.
+- `Sources/`: provenance-bound evidence records. New Sources require explicit `source_type`, `capture_method`, and `capture_mode`; use `unknown` when fidelity is not established. Never rewrite, summarize in place, fidelity-upgrade, rename, or delete a Source unless the user explicitly identifies the exact file and action.
 - `Knowledge/`: canonical durable knowledge. Agents may create or update `status: draft` notes with citations. Only a human may approve `status: evergreen`.
 - `Wiki/`: generated synthesis. Agents may create and regenerate pages when `generated: true`; preserve any section between `<!-- human:start -->` and `<!-- human:end -->`.
 - `MOCs/`: navigation. Agents may add links and descriptions; avoid deleting human-curated links without explanation.
@@ -52,7 +52,7 @@ Route repeatable work through the narrowest matching repository skill:
 
 1. Never fabricate a source, quote, date, link, or claim.
 2. Cite durable claims with a vault wikilink in `sources` or an inline source reference.
-3. Keep source records faithful to the original. Put interpretation in `Knowledge/` or `Wiki/`.
+3. Keep source records bounded by their declared capture fidelity. Put interpretation in `Knowledge/` or `Wiki/`; never launder paraphrase or unknown material into quotation-like evidence.
 4. Use one concept per Knowledge note; link related concepts rather than duplicating them.
 5. Prefer updating an existing canonical note over creating a near-duplicate.
 6. Keep subjects in metadata and links, not new top-level topic folders.

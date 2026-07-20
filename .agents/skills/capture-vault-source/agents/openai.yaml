@@ -1,4 +1,4 @@
 interface:
   display_name: "Capture Vault Source"
-  short_description: "Create editable Sources from assets"
+  short_description: "Create Sources with classified capture fidelity"
   default_prompt: "Use $capture-vault-source to turn the selected Assets or URLs into editable, unreviewed Source notes."

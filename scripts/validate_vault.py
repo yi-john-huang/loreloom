@@ -51,6 +51,54 @@ SOURCE_URL_RE = re.compile(
     re.IGNORECASE,
 )
 
+LOW_FIDELITY_CAPTURE_MODES = frozenset(
+    {"unknown", "paraphrased", "reference-only"}
+)
+CAPTURE_METHODS = frozenset(
+    {
+        "asset",
+        "url-reference",
+        "web-clipper",
+        "manual-entry",
+        "file-extraction",
+        "ocr",
+        "transcription",
+        "import",
+        "mixed",
+    }
+)
+CAPTURE_MODES = frozenset(
+    {
+        "preserved-original",
+        "verbatim-excerpt",
+        "extracted",
+        "transcribed",
+        "paraphrased",
+        "firsthand-observation",
+        "reference-only",
+        "unknown",
+        "mixed",
+    }
+)
+CAPTURE_BOUNDARY_LABELS = (
+    "Capture method",
+    "Capture mode",
+    "Original evidence preserved",
+    "Verbatim material",
+    "Extracted or transcribed material",
+    "Paraphrased material",
+    "Unknown or unavailable evidence",
+)
+CONCRETE_BOUNDARY_LABELS = CAPTURE_BOUNDARY_LABELS[2:]
+LOCATOR_RE = re.compile(
+    r"(?:—|–|-)\s*(?:page|timestamp|frame|line|section|region)"
+    r"(?:\s+|:\s*)\S.*$",
+    re.IGNORECASE,
+)
+TIMESTAMP_LOCATOR_RE = re.compile(
+    r"(?:—|–|-)\s*timestamp(?:\s+|:\s*)\S.*$", re.IGNORECASE
+)
+
 
 def relative(path: Path) -> str:
     return path.relative_to(ROOT).as_posix()
@@ -143,6 +191,78 @@ def markdown_without_fenced_code(text: str) -> str:
         masked.append(newline)
 
     return "".join(masked)
+
+
+def markdown_section_lines(text: str, heading: str) -> list[str]:
+    """Return unfenced lines beneath an exact level-two Markdown heading."""
+    lines = markdown_without_fenced_code(text).splitlines()
+    start: int | None = None
+    for index, line in enumerate(lines):
+        if line.strip() == f"## {heading}":
+            start = index + 1
+            break
+    if start is None:
+        return []
+    section: list[str] = []
+    for line in lines[start:]:
+        if re.match(r"^ {0,3}#{1,2}(?:\s|$)", line):
+            break
+        section.append(line)
+    return section
+
+
+def placeholder_value(value: str) -> bool:
+    stripped = value.strip()
+    return bool(
+        not stripped
+        or stripped.casefold() in {"none", "n/a"}
+        or re.fullmatch(r"<!--.*?-->", stripped, re.DOTALL)
+        or re.fullmatch(r"\{\{.*?\}\}", stripped, re.DOTALL)
+        or re.fullmatch(r"<[^<>]+>", stripped, re.DOTALL)
+    )
+
+
+def capture_boundary_values(text: str) -> dict[str, str]:
+    values: dict[str, str] = {}
+    for line in markdown_section_lines(text, "Capture boundary"):
+        match = re.match(r"^\s*-\s+([^:]+):\s*(.*)$", line)
+        if match and match.group(1) in CAPTURE_BOUNDARY_LABELS:
+            values[match.group(1)] = match.group(2).strip()
+    return values
+
+
+def key_passage_items(text: str) -> list[str]:
+    return [
+        match.group(1).strip()
+        for line in markdown_section_lines(text, "Key passages")
+        if (match := re.match(r"^\s*-\s+(.*)$", line))
+        and not placeholder_value(match.group(1))
+    ]
+
+
+def quoted_item(value: str) -> bool:
+    return bool(
+        re.search(r'"[^"\n]+"', value)
+        or re.search(r"“[^”\n]+”", value)
+    )
+
+
+def source_assets(metadata: dict[str, Any]) -> list[dict[str, Any]]:
+    assets = metadata.get("assets")
+    if not isinstance(assets, list):
+        return []
+    return [asset for asset in assets if isinstance(asset, dict)]
+
+
+def has_audio_video_provenance(metadata: dict[str, Any]) -> bool:
+    for asset in source_assets(metadata):
+        media_type = asset.get("media_type")
+        if isinstance(media_type, str) and media_type.startswith(("audio/", "video/")):
+            return True
+    return bool(
+        valid_source_url(metadata.get("source_url"))
+        and metadata.get("source_type") in {"video", "podcast"}
+    )
 
 
 def managed_notes() -> list[Path]:
@@ -288,6 +408,146 @@ def source_provenance_errors(metadata: dict[str, Any]) -> list[str]:
     return errors
 
 
+
+
+def source_capture_fidelity_errors(
+    path: Path, metadata: dict[str, Any], text: str
+) -> list[str]:
+    del path
+    errors: list[str] = []
+    missing = sorted(
+        field
+        for field in ("capture_method", "capture_mode")
+        if field not in metadata
+    )
+    if missing:
+        errors.append(
+            "Source missing required capture classification field(s): "
+            f"{', '.join(missing)}; classify manually (no value was inferred)"
+        )
+        return errors
+
+    method = metadata.get("capture_method")
+    mode = metadata.get("capture_mode")
+    if method not in CAPTURE_METHODS or mode not in CAPTURE_MODES:
+        return errors
+
+    assets = source_assets(metadata)
+    has_asset = bool(assets)
+    has_primary_asset = any(asset.get("role") == "primary" for asset in assets)
+    has_extracted_asset = any(
+        asset.get("extraction_status") in {"extracted", "partial"}
+        for asset in assets
+    )
+    boundary = capture_boundary_values(text)
+    extracted_boundary = boundary.get("Extracted or transcribed material", "")
+    paraphrased_boundary = boundary.get("Paraphrased material", "")
+    requires_boundary = (
+        method in {"file-extraction", "ocr", "transcription", "mixed"}
+        or mode in {"extracted", "transcribed", "paraphrased", "mixed"}
+    )
+    if requires_boundary and not all(
+        label in boundary for label in CAPTURE_BOUNDARY_LABELS
+    ):
+        errors.append(
+            "capture classification requires all exact Capture Boundary labels"
+        )
+    concrete_boundaries = [
+        label
+        for label in CONCRETE_BOUNDARY_LABELS
+        if label in boundary and not placeholder_value(boundary[label])
+    ]
+    passages = key_passage_items(text)
+
+    if method == "asset" and not has_asset:
+        errors.append("capture_method 'asset' requires a declared Asset")
+    if method == "url-reference" and not valid_source_url(metadata.get("source_url")):
+        errors.append("capture_method 'url-reference' requires a valid source_url")
+    if method in {"file-extraction", "ocr"}:
+        if not has_extracted_asset:
+            errors.append(
+                f"capture_method '{method}' requires an extracted or partial Asset"
+            )
+        if placeholder_value(extracted_boundary):
+            errors.append(
+                f"capture_method '{method}' requires a non-empty "
+                "Extracted or transcribed material Capture Boundary entry"
+            )
+    if method == "transcription":
+        if not has_audio_video_provenance(metadata):
+            errors.append(
+                "capture_method 'transcription' requires audio/video provenance"
+            )
+        if placeholder_value(extracted_boundary):
+            errors.append(
+                "capture_method 'transcription' requires a non-empty "
+                "Extracted or transcribed material Capture Boundary entry"
+            )
+    if method == "mixed" and len(concrete_boundaries) < 2:
+        errors.append(
+            "capture_method 'mixed' requires at least two concrete Capture Boundary entries"
+        )
+
+    if mode == "preserved-original" and not has_primary_asset:
+        errors.append(
+            "capture_mode 'preserved-original' requires a primary Asset"
+        )
+    if mode == "reference-only" and not valid_source_url(metadata.get("source_url")):
+        errors.append("capture_mode 'reference-only' requires a valid source_url")
+    if mode == "verbatim-excerpt" and not any(
+        LOCATOR_RE.search(item) for item in passages
+    ):
+        errors.append(
+            "capture_mode 'verbatim-excerpt' requires an exact Key passages locator"
+        )
+    if mode == "extracted":
+        if not has_extracted_asset:
+            errors.append(
+                "capture_mode 'extracted' requires an extracted or partial Asset"
+            )
+        if placeholder_value(extracted_boundary):
+            errors.append(
+                "capture_mode 'extracted' requires a non-empty "
+                "Extracted or transcribed material Capture Boundary entry"
+            )
+    if mode == "transcribed":
+        if not has_audio_video_provenance(metadata):
+            errors.append("capture_mode 'transcribed' requires audio/video provenance")
+        if placeholder_value(extracted_boundary):
+            errors.append(
+                "capture_mode 'transcribed' requires a non-empty "
+                "Extracted or transcribed material Capture Boundary entry"
+            )
+        if any(
+            quoted_item(item) and not TIMESTAMP_LOCATOR_RE.search(item)
+            for item in passages
+        ):
+            errors.append(
+                "quoted transcribed Key passages require a timestamp locator"
+            )
+    if (
+        mode == "firsthand-observation"
+        and metadata.get("source_type") != "personal-observation"
+    ):
+        errors.append(
+            "capture_mode 'firsthand-observation' requires "
+            "source_type 'personal-observation'"
+        )
+    if mode == "paraphrased":
+        if placeholder_value(paraphrased_boundary):
+            errors.append(
+                "capture_mode 'paraphrased' requires a non-empty "
+                "Paraphrased material Capture Boundary entry"
+            )
+        if any(quoted_item(item) for item in passages):
+            errors.append(
+                "capture_mode 'paraphrased' must not use quoted Key passages"
+            )
+    if mode == "mixed" and len(concrete_boundaries) < 2:
+        errors.append(
+            "capture_mode 'mixed' requires at least two concrete Capture Boundary entries"
+        )
+    return errors
 
 
 def asset_metadata_errors(notes: list[Path]) -> list[str]:
@@ -465,6 +725,11 @@ def schema_errors(notes: list[Path]) -> list[str]:
                 f"{relative(path)}: {error}"
                 for error in source_provenance_errors(metadata)
             )
+            text = path.read_text(encoding="utf-8")
+            errors.extend(
+                f"{relative(path)}: {error}"
+                for error in source_capture_fidelity_errors(path, metadata, text)
+            )
 
 
         if metadata.get("type") == "daily" and metadata.get("date") != path.stem:
@@ -551,6 +816,91 @@ def schema_errors(notes: list[Path]) -> list[str]:
                 errors.append(f"{relative(path)}: human block markers are reversed")
 
     return errors
+
+
+def concept_capture_fidelity_warnings(notes: list[Path]) -> list[str]:
+    warnings: list[str] = []
+    for path in notes:
+        metadata, parse_error = load_frontmatter(path)
+        if (
+            parse_error
+            or metadata is None
+            or metadata.get("type") != "concept"
+            or metadata.get("status") not in {"draft", "evergreen"}
+        ):
+            continue
+
+        evidence = metadata.get("sources")
+        if not isinstance(evidence, list):
+            continue
+        modes: set[str] = set()
+        all_sources = bool(evidence)
+        all_sources_low = bool(evidence)
+        skip_warning = False
+        for source in evidence:
+            if not isinstance(source, str):
+                skip_warning = True
+                break
+            match = re.fullmatch(r"\[\[([^\[\]]+)\]\]", source)
+            if not match:
+                skip_warning = True
+                break
+            target = normalize_target(match.group(1))
+            if target.startswith("Daily/"):
+                daily_path = ROOT / f"{target}.md"
+                if not daily_path.is_file():
+                    skip_warning = True
+                    break
+                all_sources = False
+                all_sources_low = False
+                continue
+            if not target.startswith("Sources/"):
+                skip_warning = True
+                break
+            target_path = ROOT / f"{target}.md"
+            if not target_path.is_file():
+                skip_warning = True
+                break
+            source_metadata, source_error = load_frontmatter(target_path)
+            if source_error or source_metadata is None:
+                skip_warning = True
+                break
+            capture_mode = source_metadata.get("capture_mode")
+            if not isinstance(capture_mode, str):
+                skip_warning = True
+                break
+            if capture_mode in LOW_FIDELITY_CAPTURE_MODES:
+                modes.add(capture_mode)
+            else:
+                all_sources_low = False
+
+        if skip_warning or not modes:
+            continue
+        limitation_lines = markdown_section_lines(
+            path.read_text(encoding="utf-8"), "Evidence limitations"
+        )
+        if any(
+            not placeholder_value(line)
+            and not re.match(r"^\s*#{1,6}(?:\s|$)", line)
+            for line in limitation_lines
+        ):
+            continue
+        if (
+            metadata.get("status") == "evergreen"
+            and all_sources
+            and all_sources_low
+        ):
+            warnings.append(
+                f"{relative(path)}: evergreen Concept relies exclusively on unknown, "
+                "paraphrased, or reference-only Sources; review and retain an "
+                "Evidence limitations section"
+            )
+        else:
+            warnings.append(
+                f"{relative(path)}: Concept cites {', '.join(sorted(modes))} Source "
+                "evidence; add and review an Evidence limitations section"
+            )
+    return warnings
 
 
 def normalize_asset_target(raw: str) -> str:
@@ -788,11 +1138,19 @@ def main() -> int:
     errors.extend(repository_hygiene_errors())
     errors.extend(codex_agent_errors())
     errors.extend(skill_errors())
+    warnings = concept_capture_fidelity_warnings(notes)
 
     if errors:
         print(f"Vault validation failed with {len(errors)} error(s):")
         for error in sorted(set(errors)):
             print(f"- {error}")
+
+    if warnings:
+        print("Vault validation warning(s):")
+        for warning in sorted(set(warnings)):
+            print(f"- {warning}")
+
+    if errors:
         return 1
 
     print(

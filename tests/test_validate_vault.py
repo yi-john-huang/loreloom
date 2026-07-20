@@ -182,6 +182,8 @@ updated: 2026-07-18
 tags: []
 aliases: []
 source_type: other
+capture_method: asset
+capture_mode: preserved-original
 source_url: ""
 author: ""
 published: null
@@ -211,6 +213,8 @@ updated: 2026-07-18
 tags: []
 aliases: []
 source_type: other
+capture_method: url-reference
+capture_mode: reference-only
 source_url: "{url}"
 author: ""
 published: null
@@ -508,6 +512,8 @@ updated: 2026-07-18
 tags: []
 aliases: []
 source_type: other
+capture_method: manual-entry
+capture_mode: unknown
 source_url: ""
 author: ""
 published: null
@@ -586,6 +592,8 @@ updated: 2026-07-18
 tags: []
 aliases: []
 source_type: other
+capture_method: manual-entry
+capture_mode: unknown
 source_url: ""
 inbox_source: "[[Inbox/capture]]"
 author: ""
@@ -682,6 +690,436 @@ assets: []
         errors = validate_vault.asset_metadata_errors([source])
 
         self.assertTrue(any("unsafe asset path" in error for error in errors))
+
+
+class CaptureFidelityValidationTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.repo = Path(tempfile.mkdtemp())
+        self.original_root = validate_vault.ROOT
+        validate_vault.ROOT = self.repo
+        (self.repo / "schemas").mkdir(parents=True)
+        shutil.copy2(
+            Path(__file__).resolve().parents[1]
+            / "schemas"
+            / "frontmatter.schema.json",
+            self.repo / "schemas" / "frontmatter.schema.json",
+        )
+
+    def tearDown(self) -> None:
+        validate_vault.ROOT = self.original_root
+        shutil.rmtree(self.repo)
+
+    def write(self, relative_path: str, content: str) -> Path:
+        path = self.repo / relative_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+        return path
+
+    def metadata(self, method: str, mode: str, **overrides: object) -> dict[str, object]:
+        metadata: dict[str, object] = {
+            "type": "source",
+            "source_type": "other",
+            "source_url": "https://example.com/evidence",
+            "capture_method": method,
+            "capture_mode": mode,
+            "assets": [],
+        }
+        metadata.update(overrides)
+        return metadata
+
+    def boundary(self, **values: str) -> str:
+        defaults = {
+            "Capture method": "Recorded route.",
+            "Capture mode": "Recorded representation.",
+            "Original evidence preserved": "None",
+            "Verbatim material": "None",
+            "Extracted or transcribed material": "None",
+            "Paraphrased material": "None",
+            "Unknown or unavailable evidence": "None",
+        }
+        defaults.update(values)
+        return "## Capture boundary\n\n" + "\n".join(
+            f"- {label}: {defaults[label]}"
+            for label in validate_vault.CAPTURE_BOUNDARY_LABELS
+        )
+
+    def fidelity_errors(
+        self, metadata: dict[str, object], body: str = ""
+    ) -> list[str]:
+        return validate_vault.source_capture_fidelity_errors(
+            self.repo / "Sources" / "evidence.md", metadata, body
+        )
+
+    def test_valid_capture_method_and_mode_contracts(self) -> None:
+        primary = {
+            "path": "Assets/evidence.pdf",
+            "media_type": "application/pdf",
+            "role": "primary",
+            "sha256": "a" * 64,
+            "extraction_status": "extracted",
+        }
+        audio = {
+            **primary,
+            "path": "Assets/evidence.wav",
+            "media_type": "audio/wav",
+        }
+        extracted_boundary = self.boundary(
+            **{"Extracted or transcribed material": "Parser output from the primary Asset."}
+        )
+        mixed_boundary = self.boundary(
+            **{
+                "Original evidence preserved": "Primary Asset bytes.",
+                "Paraphrased material": "Summary paragraph.",
+            }
+        )
+        cases = (
+            (
+                self.metadata(
+                    "manual-entry",
+                    "unknown",
+                    source_url="",
+                    inbox_source="[[Inbox/capture]]",
+                ),
+                "",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                self.boundary(
+                    **{"Paraphrased material": "The summary is owner-declared paraphrase."}
+                ),
+            ),
+            (self.metadata("asset", "preserved-original", assets=[primary]), ""),
+            (self.metadata("url-reference", "reference-only"), ""),
+            (
+                self.metadata("file-extraction", "extracted", assets=[primary]),
+                extracted_boundary,
+            ),
+            (
+                self.metadata("transcription", "transcribed", assets=[audio]),
+                extracted_boundary
+                + '\n\n## Key passages\n\n- “Spoken words.” — timestamp 00:00:04',
+            ),
+            (
+                self.metadata(
+                    "transcription",
+                    "transcribed",
+                    source_type="video",
+                ),
+                extracted_boundary
+                + '\n\n## Key passages\n\n- “Spoken words.” — timestamp 00:00:04',
+            ),
+            (
+                self.metadata(
+                    "manual-entry",
+                    "firsthand-observation",
+                    source_type="personal-observation",
+                ),
+                "",
+            ),
+            (self.metadata("mixed", "mixed"), mixed_boundary),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                '## Key passages\n\n- “Exact words.” — page 12',
+            ),
+        )
+        for metadata, body in cases:
+            with self.subTest(
+                method=metadata["capture_method"], mode=metadata["capture_mode"]
+            ):
+                self.assertEqual(self.fidelity_errors(metadata, body), [])
+
+    def test_invalid_capture_prerequisites_fail_closed(self) -> None:
+        primary_not_extracted = {
+            "path": "Assets/evidence.pdf",
+            "media_type": "application/pdf",
+            "role": "supporting",
+            "sha256": "a" * 64,
+            "extraction_status": "not-requested",
+        }
+        cases = (
+            (self.metadata("asset", "unknown"), "", "requires a declared Asset"),
+            (
+                self.metadata("url-reference", "unknown", source_url=""),
+                "",
+                "requires a valid source_url",
+            ),
+            (
+                self.metadata(
+                    "asset",
+                    "preserved-original",
+                    assets=[primary_not_extracted],
+                ),
+                "",
+                "requires a primary Asset",
+            ),
+            (
+                self.metadata("file-extraction", "extracted", assets=[]),
+                self.boundary(
+                    **{
+                        "Extracted or transcribed material": "Parser output was declared."
+                    }
+                ),
+                "requires an extracted or partial Asset",
+            ),
+            (
+                self.metadata(
+                    "file-extraction",
+                    "extracted",
+                    assets=[primary_not_extracted],
+                ),
+                "",
+                "requires an extracted or partial Asset",
+            ),
+            (
+                self.metadata("ocr", "unknown", assets=[primary_not_extracted]),
+                "",
+                "Extracted or transcribed material",
+            ),
+            (
+                self.metadata("transcription", "transcribed"),
+                self.boundary(
+                    **{"Extracted or transcribed material": "Typed transcript."}
+                ),
+                "requires audio/video provenance",
+            ),
+            (
+                self.metadata("manual-entry", "preserved-original"),
+                "",
+                "requires a primary Asset",
+            ),
+            (
+                self.metadata("manual-entry", "reference-only", source_url=""),
+                "",
+                "requires a valid source_url",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "```md\n## Key passages\n- “Fake.” — page 1\n```",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "transcribed"),
+                self.boundary(
+                    **{"Extracted or transcribed material": "Typed transcript."}
+                )
+                + '\n\n## Key passages\n\n- “No locator.” — page 2',
+                "requires audio/video provenance",
+            ),
+            (
+                self.metadata(
+                    "transcription",
+                    "transcribed",
+                    source_type="podcast",
+                ),
+                self.boundary(
+                    **{"Extracted or transcribed material": "Typed transcript."}
+                )
+                + '\n\n## Key passages\n\n- “No timestamp.” — section opening',
+                "require a timestamp locator",
+            ),
+            (
+                self.metadata("manual-entry", "firsthand-observation"),
+                "",
+                "requires source_type 'personal-observation'",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                self.boundary()
+                + '\n\n## Key passages\n\n- “Quotation laundering.” — page 1',
+                "requires a non-empty Paraphrased material",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                "## Capture boundary\n\n"
+                "- Paraphrased material: Owner-declared summary.",
+                "requires all exact Capture Boundary labels",
+            ),
+            (
+                self.metadata("mixed", "mixed"),
+                self.boundary(
+                    **{"Original evidence preserved": "One concrete category."}
+                ),
+                "requires at least two concrete Capture Boundary entries",
+            ),
+        )
+        for metadata, body, expected in cases:
+            with self.subTest(
+                method=metadata["capture_method"], mode=metadata["capture_mode"]
+            ):
+                errors = self.fidelity_errors(metadata, body)
+                self.assertTrue(any(expected in error for error in errors), errors)
+
+    def test_missing_fields_and_invalid_enums_are_reported(self) -> None:
+        metadata = self.metadata("manual-entry", "unknown")
+        del metadata["capture_method"]
+        del metadata["capture_mode"]
+        errors = self.fidelity_errors(metadata)
+        self.assertIn(
+            "Source missing required capture classification field(s): "
+            "capture_method, capture_mode; classify manually (no value was inferred)",
+            errors,
+        )
+
+        self.write("Inbox/capture.md", "# capture\n")
+        source = self.write(
+            "Sources/evidence.md",
+            """---
+type: source
+title: evidence
+status: processing
+created: 2026-07-18
+updated: 2026-07-18
+tags: []
+aliases: []
+source_type: other
+capture_method: invented
+capture_mode: synthetic
+source_url: ""
+inbox_source: "[[Inbox/capture]]"
+author: ""
+published: null
+captured: 2026-07-18
+review_status: needs-review
+reviewed: null
+assets: []
+---
+
+# evidence
+""",
+        )
+        schema_errors = validate_vault.schema_errors([source])
+        self.assertTrue(any("capture_method" in error for error in schema_errors))
+        self.assertTrue(any("capture_mode" in error for error in schema_errors))
+
+    def reviewed_source(self, mode: str, title: str) -> str:
+        return f"""---
+type: source
+title: {title}
+status: captured
+created: 2026-07-18
+updated: 2026-07-18
+tags: []
+aliases: []
+source_type: other
+capture_method: url-reference
+capture_mode: {mode}
+source_url: "https://example.com/{title}"
+author: ""
+published: null
+captured: 2026-07-18
+review_status: reviewed
+reviewed: 2026-07-18
+assets: []
+---
+
+# {title}
+"""
+
+    def concept(self, status: str, sources: list[str], limitation: str = "") -> str:
+        reviewed = "2026-07-18" if status == "evergreen" else "null"
+        links = "\n".join(f'  - "{source}"' for source in sources)
+        limitation_section = (
+            f"\n## Evidence limitations\n\n{limitation}\n" if limitation else ""
+        )
+        return f"""---
+type: concept
+title: claim
+status: {status}
+created: 2026-07-18
+updated: 2026-07-18
+tags: []
+aliases: []
+confidence: low
+reviewed: {reviewed}
+sources:
+{links}
+---
+
+# claim
+{limitation_section}"""
+
+    def test_low_fidelity_concept_warnings_and_suppression(self) -> None:
+        weak = self.write(
+            "Sources/weak.md", self.reviewed_source("unknown", "weak")
+        )
+        strong = self.write(
+            "Sources/strong.md", self.reviewed_source("verbatim-excerpt", "strong")
+        )
+        draft = self.write(
+            "Knowledge/claim.md",
+            self.concept("draft", ["[[Sources/weak]]"]),
+        )
+        warnings = validate_vault.concept_capture_fidelity_warnings(
+            [weak, strong, draft]
+        )
+        self.assertTrue(any("Concept cites unknown" in warning for warning in warnings))
+
+        draft.write_text(
+            self.concept(
+                "draft",
+                ["[[Sources/weak]]"],
+                "Capture fidelity is unknown; the original was not revalidated.",
+            ),
+            encoding="utf-8",
+        )
+        self.assertEqual(
+            validate_vault.concept_capture_fidelity_warnings([weak, strong, draft]),
+            [],
+        )
+
+        draft.write_text(
+            self.concept("evergreen", ["[[Sources/weak]]"]), encoding="utf-8"
+        )
+        warnings = validate_vault.concept_capture_fidelity_warnings(
+            [weak, strong, draft]
+        )
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("relies exclusively", warnings[0])
+
+        draft.write_text(
+            self.concept(
+                "evergreen",
+                ["[[Sources/weak]]", "[[Sources/strong]]"],
+            ),
+            encoding="utf-8",
+        )
+        warnings = validate_vault.concept_capture_fidelity_warnings(
+            [weak, strong, draft]
+        )
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("Concept cites unknown", warnings[0])
+        self.assertNotIn("relies exclusively", warnings[0])
+
+        daily = self.write(
+            "Daily/2026-07-18.md",
+            "---\ntype: daily\ntitle: 2026-07-18\nstatus: captured\n"
+            "created: 2026-07-18\nupdated: 2026-07-18\ntags: []\n"
+            "aliases: []\ndate: 2026-07-18\n---\n",
+        )
+        draft.write_text(
+            self.concept(
+                "evergreen",
+                ["[[Sources/weak]]", "[[Daily/2026-07-18]]"],
+            ),
+            encoding="utf-8",
+        )
+        warnings = validate_vault.concept_capture_fidelity_warnings(
+            [weak, strong, daily, draft]
+        )
+        self.assertEqual(len(warnings), 1)
+        self.assertNotIn("relies exclusively", warnings[0])
+
+        draft.write_text(
+            self.concept(
+                "draft",
+                ["[[Sources/weak]]", "[[Sources/missing]]"],
+            ),
+            encoding="utf-8",
+        )
+        self.assertEqual(
+            validate_vault.concept_capture_fidelity_warnings([weak, strong, draft]),
+            [],
+        )
 
 
 class CodexAgentConfigurationTests(unittest.TestCase):

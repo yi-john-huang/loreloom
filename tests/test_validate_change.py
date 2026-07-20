@@ -144,6 +144,8 @@ class ChangeValidatorTests(unittest.TestCase):
         reviewed: bool = False,
         source_url: str = "https://example.com/report",
         assets: str = "[]",
+        capture_method: str = "url-reference",
+        capture_mode: str = "reference-only",
         inbox_source: str = "null",
         body: str = "",
     ) -> str:
@@ -159,6 +161,8 @@ updated: 2026-07-19
 tags: []
 aliases: []
 source_type: other
+capture_method: {capture_method}
+capture_mode: {capture_mode}
 source_url: "{source_url}"
 inbox_source: {inbox_source}
 author: ""
@@ -775,6 +779,7 @@ assets: {assets}
                 errors = validate_change.source_contract_errors(
                     "Sources/report.md",
                     metadata,
+                    self.valid_source("report", source_url=url),
                 )
 
                 self.assertFalse(validate_change.valid_source_url(url))
@@ -795,6 +800,7 @@ assets: {assets}
         errors = validate_change.source_contract_errors(
             "Sources/report.md",
             metadata,
+            self.valid_source("report", source_url=url),
         )
 
         self.assertTrue(validate_change.valid_source_url(url))
@@ -815,13 +821,16 @@ assets: {assets}
         self.assertEqual(self.preflight(path).returncode, 0)
         self.write(
             path,
-            self.valid_source("report").replace("assets: []\n", ""),
+            self.valid_source("report")
+            .replace("capture_method: url-reference\n", "")
+            .replace("capture_mode: reference-only\n", ""),
         )
 
         result = self.final(path)
 
         self.assertEqual(result.returncode, 1, result.stdout)
-        self.assertIn("assets", result.stdout)
+        self.assertIn("capture_method, capture_mode", result.stdout)
+        self.assertIn("no value was inferred", result.stdout)
 
     def test_invalid_processing_source_state_is_rejected(self) -> None:
         path = "Sources/report.md"
@@ -1410,7 +1419,12 @@ assets: {assets}
         self.assertEqual(self.preflight(path).returncode, 0)
         self.write(
             path,
-            self.valid_source("unprovenanced", source_url=""),
+            self.valid_source(
+                "unprovenanced",
+                source_url="",
+                capture_method="manual-entry",
+                capture_mode="unknown",
+            ),
         )
 
         result = self.final(path)
@@ -1432,6 +1446,8 @@ assets: {assets}
             self.valid_source(
                 "report",
                 source_url="",
+                capture_method="asset",
+                capture_mode="preserved-original",
                 assets=(
                     "\n  - path: Assets/report.pdf\n"
                     "    media_type: application/pdf\n"
@@ -1460,6 +1476,8 @@ assets: {assets}
             self.valid_source(
                 "report",
                 source_url="",
+                capture_method="asset",
+                capture_mode="preserved-original",
                 assets=(
                     "\n  - path: Assets/venv/report.pdf\n"
                     "    media_type: application/pdf\n"
@@ -1487,6 +1505,8 @@ assets: {assets}
             self.valid_source(
                 "report",
                 source_url="",
+                capture_method="asset",
+                capture_mode="preserved-original",
                 assets=(
                     "\n  - path: Assets/report.pdf\n"
                     "    media_type: application/pdf\n"
@@ -1513,6 +1533,8 @@ assets: {assets}
             self.valid_source(
                 "report",
                 source_url="",
+                capture_method="asset",
+                capture_mode="preserved-original",
                 assets=(
                     "\n  - path: Assets/venv/new.pdf\n"
                     "    media_type: application/pdf\n"
@@ -1542,6 +1564,8 @@ assets: {assets}
                 "capture",
                 source_url="",
                 inbox_source='"[[Inbox/capture]]"',
+                capture_method="manual-entry",
+                capture_mode="unknown",
             ),
         )
 
@@ -1744,6 +1768,255 @@ assets: {assets}
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("existing Assets are immutable in agent change sets", result.stdout)
+
+
+class CaptureFidelityContractTests(unittest.TestCase):
+    def metadata(self, method: str, mode: str, **overrides: object) -> dict[str, object]:
+        metadata: dict[str, object] = {
+            "type": "source",
+            "title": "report",
+            "status": "processing",
+            "created": "2026-07-18",
+            "updated": "2026-07-18",
+            "tags": [],
+            "aliases": [],
+            "source_type": "other",
+            "capture_method": method,
+            "capture_mode": mode,
+            "source_url": "https://example.com/report",
+            "author": "",
+            "published": None,
+            "captured": "2026-07-18",
+            "review_status": "needs-review",
+            "reviewed": None,
+            "assets": [],
+        }
+        metadata.update(overrides)
+        return metadata
+
+    def boundary(self, **values: str) -> str:
+        defaults = {
+            "Capture method": "Recorded route.",
+            "Capture mode": "Recorded representation.",
+            "Original evidence preserved": "None",
+            "Verbatim material": "None",
+            "Extracted or transcribed material": "None",
+            "Paraphrased material": "None",
+            "Unknown or unavailable evidence": "None",
+        }
+        defaults.update(values)
+        return "## Capture boundary\n\n" + "\n".join(
+            f"- {label}: {defaults[label]}"
+            for label in validate_change.CAPTURE_BOUNDARY_LABELS
+        )
+
+    def errors(
+        self, metadata: dict[str, object], body: str = ""
+    ) -> list[str]:
+        return validate_change.source_capture_fidelity_errors(
+            "Sources/report.md", metadata, body
+        )
+
+    def test_valid_method_and_mode_prerequisites(self) -> None:
+        primary = {
+            "path": "Assets/report.pdf",
+            "media_type": "application/pdf",
+            "role": "primary",
+            "sha256": "a" * 64,
+            "extraction_status": "partial",
+        }
+        audio = {**primary, "media_type": "audio/wav"}
+        extracted = self.boundary(
+            **{"Extracted or transcribed material": "Tool output from primary Asset."}
+        )
+        cases = (
+            (self.metadata("asset", "preserved-original", assets=[primary]), ""),
+            (self.metadata("url-reference", "reference-only"), ""),
+            (
+                self.metadata("web-clipper", "unknown"),
+                "",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                self.boundary(
+                    **{"Paraphrased material": "Owner-declared summary."}
+                ),
+            ),
+            (
+                self.metadata("file-extraction", "extracted", assets=[primary]),
+                extracted,
+            ),
+            (
+                self.metadata("ocr", "extracted", assets=[primary]),
+                extracted,
+            ),
+            (
+                self.metadata("transcription", "transcribed", assets=[audio]),
+                extracted
+                + '\n\n## Key passages\n\n- “Transcript.” — timestamp 00:01:00',
+            ),
+            (self.metadata("import", "unknown"), ""),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                '## Key passages\n\n- "Exact." — section Abstract',
+            ),
+            (
+                self.metadata(
+                    "manual-entry",
+                    "firsthand-observation",
+                    source_type="personal-observation",
+                ),
+                "",
+            ),
+            (
+                self.metadata("mixed", "mixed"),
+                self.boundary(
+                    **{
+                        "Original evidence preserved": "Primary representation.",
+                        "Unknown or unavailable evidence": "Missing appendix.",
+                    }
+                ),
+            ),
+        )
+        for metadata, body in cases:
+            with self.subTest(
+                method=metadata["capture_method"], mode=metadata["capture_mode"]
+            ):
+                self.assertEqual(self.errors(metadata, body), [])
+
+    def test_invalid_prerequisites_locators_and_boundaries(self) -> None:
+        unavailable = {
+            "path": "Assets/report.pdf",
+            "media_type": "application/pdf",
+            "role": "supporting",
+            "sha256": "a" * 64,
+            "extraction_status": "unavailable",
+        }
+        cases = (
+            (self.metadata("asset", "unknown"), "", "declared Asset"),
+            (
+                self.metadata("url-reference", "unknown", source_url=""),
+                "",
+                "valid source_url",
+            ),
+            (
+                self.metadata(
+                    "asset",
+                    "preserved-original",
+                    assets=[unavailable],
+                ),
+                "",
+                "primary Asset",
+            ),
+            (
+                self.metadata("file-extraction", "extracted", assets=[]),
+                self.boundary(
+                    **{
+                        "Extracted or transcribed material": "Parser output was declared."
+                    }
+                ),
+                "extracted or partial Asset",
+            ),
+            (
+                self.metadata("file-extraction", "unknown", assets=[unavailable]),
+                "",
+                "extracted or partial Asset",
+            ),
+            (
+                self.metadata("ocr", "extracted", assets=[unavailable]),
+                self.boundary(
+                    **{"Extracted or transcribed material": "OCR output."}
+                ),
+                "extracted or partial Asset",
+            ),
+            (
+                self.metadata("transcription", "transcribed"),
+                self.boundary(
+                    **{"Extracted or transcribed material": "Transcript."}
+                ),
+                "audio/video provenance",
+            ),
+            (
+                self.metadata("manual-entry", "preserved-original"),
+                "",
+                "primary Asset",
+            ),
+            (
+                self.metadata("manual-entry", "reference-only", source_url=""),
+                "",
+                "valid source_url",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "```\n## Key passages\n- “Fake.” — line 1\n```",
+                "exact Key passages locator",
+            ),
+            (
+                self.metadata(
+                    "transcription",
+                    "transcribed",
+                    source_type="video",
+                ),
+                self.boundary(
+                    **{"Extracted or transcribed material": "Transcript."}
+                )
+                + '\n\n## Key passages\n\n- “Quoted.” — frame 9',
+                "timestamp locator",
+            ),
+            (
+                self.metadata("manual-entry", "firsthand-observation"),
+                "",
+                "personal-observation",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                self.boundary(
+                    **{"Paraphrased material": "Summary."}
+                )
+                + '\n\n## Key passages\n\n- “Not permitted.” — page 2',
+                "must not use quoted Key passages",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                "## Capture boundary\n\n"
+                "- Paraphrased material: Owner-declared summary.",
+                "requires all exact Capture Boundary labels",
+            ),
+            (
+                self.metadata("mixed", "mixed"),
+                self.boundary(
+                    **{"Verbatim material": "One concrete entry."}
+                ),
+                "at least two concrete Capture Boundary entries",
+            ),
+        )
+        for metadata, body, expected in cases:
+            with self.subTest(
+                method=metadata["capture_method"], mode=metadata["capture_mode"]
+            ):
+                errors = self.errors(metadata, body)
+                self.assertTrue(any(expected in error for error in errors), errors)
+
+    def test_missing_fields_and_invalid_enums_fail_contract(self) -> None:
+        metadata = self.metadata("manual-entry", "unknown")
+        del metadata["capture_method"]
+        del metadata["capture_mode"]
+        errors = validate_change.source_contract_errors(
+            "Sources/report.md", metadata, "# report\n"
+        )
+        self.assertTrue(any("capture_method, capture_mode" in error for error in errors))
+        self.assertTrue(any("no value was inferred" in error for error in errors))
+
+        for field, value in (
+            ("capture_method", "invented"),
+            ("capture_mode", "synthetic"),
+        ):
+            invalid = self.metadata("manual-entry", "unknown")
+            invalid[field] = value
+            errors = validate_change.source_contract_errors(
+                "Sources/report.md", invalid, "# report\n"
+            )
+            self.assertTrue(any(field in error for error in errors), errors)
 
 
 if __name__ == "__main__":

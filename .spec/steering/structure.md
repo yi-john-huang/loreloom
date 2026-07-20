@@ -10,7 +10,7 @@ Loreloom is organized by knowledge lifecycle and authority, not by application l
 loreloom/
 ├── Inbox/                 # Unprocessed, untrusted capture
 ├── Daily/                 # Date-based observations and event logs
-├── Sources/               # Faithful, append-only evidence records
+├── Sources/               # Provenance-bound evidence; capture fidelity may remain unknown
 ├── Knowledge/             # Atomic, cited Concept notes
 ├── Wiki/                  # Regenerable synthesis from Knowledge inputs
 ├── MOCs/                  # Curated Maps of Content and navigation
@@ -53,7 +53,7 @@ Only `.spec/steering/` supplies shared project context. Other locally generated 
 
 ## Authority by Location
 
-- `Sources/` is read-only evidence after capture; amendments append rather than rewrite.
+- `Sources/` is provenance-bound evidence after capture; required `source_type`, `capture_method`, and `capture_mode` keep semantic type, intake route, and representation fidelity distinct. Unknown fidelity remains explicit, and amendments append rather than rewrite.
 - `Knowledge/` is canonical durable knowledge. Agents may author cited drafts; humans approve evergreen status.
 - `Wiki/` is generated and replaceable. Preserve content between `<!-- human:start -->` and `<!-- human:end -->` byte-for-byte.
 - `MOCs/` is curated navigation; prefer additive edits and explain removals.

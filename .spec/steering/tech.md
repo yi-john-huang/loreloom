@@ -63,6 +63,7 @@ The complete cross-platform environment is pinned in `uv.lock`. When intentional
 - Managed notes live in lifecycle directories.
 - Owner-supplied evidence lives under `Assets/`; Source bindings validate safe paths and current streaming SHA-256 digests.
 - `schemas/frontmatter.schema.json` defines common and type-specific metadata.
+- Source frontmatter requires `capture_method` and `capture_mode`; semantic validation checks only provable cross-field prerequisites, Capture Boundary entries, and exact locator forms. Legacy classification is manual because existing metadata cannot prove intake route or semantic fidelity.
 - Templates are authoring scaffolds, not schema instances.
 - Standard Markdown and YAML compatibility takes priority over plugin-specific behavior.
 
@@ -77,6 +78,8 @@ The complete cross-platform environment is pinned in `uv.lock`. When intentional
 - required and type-specific frontmatter;
 - controlled values, ISO dates, and title/filename consistency;
 - Concept evidence and human-reviewed evergreen semantics;
+- Source provenance, capture-method/mode cross-field consistency, unfenced Capture Boundary entries, and exact passage locators;
+- warning-only Concept checks for missing Evidence limitations when cited Sources use `unknown`, `paraphrased`, or `reference-only`;
 - Wiki Knowledge inputs, review state, and human-block markers;
 - unresolved or ambiguous Obsidian wikilinks;
 - private/runtime-file hygiene;
@@ -92,6 +95,7 @@ Ignored local SDD tooling is deliberately excluded from repository agent/skill v
 - detection of tracked, untracked, and ignored writes;
 - strict receipt-free admission of complete processing Sources;
 - signed creation of reviewed Sources, append-only Source amendments, and exact signed `source_review` transitions;
+- guarded Source capture-contract parity, including required classifications and body-aware prerequisites;
 - protected framework paths and review, promotion, archive, deletion, rename, and Wiki human-block gates;
 - protected, short-lived approval receipts bound to the exact final diff digest.
 
@@ -162,6 +166,7 @@ Never regenerate the preflight snapshot after work begins or change the final al
 ## Compatibility and Security
 
 - Prefer additive schema evolution. Breaking changes require a migration note, updated templates/examples, validator coverage, and rationale.
+- Breaking Source-schema migrations must avoid automatic fidelity inference. Missing capture classifications are inventory errors; owners inspect original evidence and amend reviewed Sources manually.
 - Treat Inbox content, Sources, attachments, transcripts, and linked pages as untrusted data.
 - Keep the public framework and private personal vault in separate repositories and working copies.
 - Use synthetic or safely attributed examples in public changes.

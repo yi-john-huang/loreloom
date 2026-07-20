@@ -52,6 +52,8 @@ Choose folders by a note's role, not its subject:
 
 Keep subjects in links, aliases, tags, and MOCs. Do not add top-level topic folders.
 
+Every Source keeps three axes separate: `source_type` is what the evidence is, `capture_method` is how it entered the vault, and `capture_mode` is how the captured representation relates to original evidence. This synthetic cycle uses a hash-bound original Asset; manual text would default to `unknown`, not inherit stronger fidelity from confident wording.
+
 ## 4. Complete the first evidence cycle
 
 The steps below use a small synthetic local Asset so the complete path is deterministic. Do not substitute personal, confidential, or copyrighted material during this first cycle.
@@ -90,6 +92,8 @@ updated: YYYY-MM-DD
 tags: []
 aliases: []
 source_type: personal-observation
+capture_method: asset
+capture_mode: preserved-original
 source_url: ""
 inbox_source: null
 author: ""
@@ -113,6 +117,16 @@ assets:
 - Original URL:
 - Accessed: YYYY-MM-DD
 - Rights or sharing constraints: Synthetic Loreloom onboarding fixture; keep personal vault material private.
+
+## Capture boundary
+
+- Capture method: Exact local Asset bound in frontmatter.
+- Capture mode: Preserved original synthetic one-line text Asset.
+- Original evidence preserved: `Assets/First cycle.txt`, primary role, with the documented SHA-256.
+- Verbatim material: The Key passage repeats line 1 exactly.
+- Extracted or transcribed material: None
+- Paraphrased material: None
+- Unknown or unavailable evidence: None
 
 ## Assets
 
@@ -139,6 +153,13 @@ None.
 - [ ] Title, origin, and dates verified
 - [ ] Asset path and current SHA-256 verified
 - [ ] Rights or sharing constraints recorded
+- [ ] Capture method accurately describes how the content entered the vault
+- [ ] Capture mode is supported by the preserved one-line Asset
+- [ ] Original evidence availability is recorded
+- [ ] Verbatim passage has the exact line locator
+- [ ] Extracted or transcribed material is clearly labeled
+- [ ] Paraphrased material is distinguished from evidence
+- [ ] Unknown fidelity remains explicitly marked
 - [ ] Transcription and summary verified against line 1
 - [ ] Source is ready for human review
 ```

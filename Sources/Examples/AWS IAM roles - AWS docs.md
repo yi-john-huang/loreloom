@@ -3,12 +3,15 @@ type: source
 title: AWS IAM roles - AWS docs
 status: processing
 created: 2026-07-18
-updated: 2026-07-18
+updated: 2026-07-21
 tags:
   - tech/aws
   - security/identity
 aliases: []
 source_type: documentation
+capture_method: url-reference
+capture_mode: reference-only
+agent: codex
 source_url: "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html"
 author: Amazon Web Services
 published: null
@@ -25,6 +28,16 @@ assets: []
 - Location: AWS Identity and Access Management User Guide
 - Accessed: 2026-07-18
 - Sharing: this note links to the source and contains only an original short summary.
+
+## Capture boundary
+
+- Capture method: URL reference retained in `source_url`.
+- Capture mode: Reference only; the original AWS documentation bytes are not stored locally.
+- Original evidence preserved: No; consult the retained URL.
+- Verbatim material: None
+- Extracted or transcribed material: None
+- Paraphrased material: The Faithful summary is a short summary, not verbatim evidence.
+- Unknown or unavailable evidence: Original bytes and exact wording are unavailable in the vault.
 
 ## Faithful summary
 

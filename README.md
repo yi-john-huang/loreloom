@@ -40,6 +40,7 @@ Concept draft -> owner claim/citation review -> optional evergreen
 - **One root by default.** The active Codex session runs bounded skills sequentially; custom read-only agents are an owner-approved advanced option.
 - **Skills are reusable.** Repo-scoped skills route capture, distillation, synthesis, auditing, and orchestration consistently.
 - **Asset or URL intake.** Owners may supply local files in `Assets/` or record absolute HTTP(S) URLs; `$capture-vault-source` creates editable processing Sources without fetching, copying, or overwriting resources.
+- **Explicit capture fidelity.** Every Source separates `source_type` (what the evidence is), `capture_method` (how it entered the vault), and `capture_mode` (how the representation relates to original evidence). Conservative `unknown` classifications prevent manual summaries from masquerading as preserved evidence.
 - **Plain Markdown wins.** The vault remains usable without a plugin, database, or hosted service.
 
 ## Repository map
@@ -140,6 +141,7 @@ The validator checks:
 - unresolved Obsidian wikilinks;
 - local Asset references, existence, hashes, and embedded attachment links;
 - semantic rules such as reviewed evergreen Concepts and declared Wiki inputs;
+- required Source capture-method/mode enums, provenance prerequisites, Capture Boundary entries, exact locators, and warning-only downstream Evidence limitations;
 - repository hygiene such as ignored private files.
 
 For **advanced owner-approved multi-agent changes**, `scripts/validate_change.py` additionally compares the diff with an immutable pre-task `HEAD` and filesystem snapshot, then enforces exact output scope, protected paths, strict processing Source admission, append-only reviewed Sources, signed `source_review`, review/archive gates, and preserved Wiki human blocks. Gated approvals require a short-lived, path-specific receipt under protected Git metadata. Native Windows users run this advanced path in WSL. See [Advanced multi-agent execution](docs/MULTI_AGENT.md).

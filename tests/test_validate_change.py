@@ -1898,6 +1898,14 @@ class CaptureFidelityContractTests(unittest.TestCase):
                 "> - “Exact blockquoted item.” — page 12",
             ),
             (
+                self.metadata("manual-entry", "paraphrased"),
+                "## Capture boundary\n\n"
+                + "\n".join(
+                    f"- \n  2. {label}: concrete value"
+                    for label in validate_change.CAPTURE_BOUNDARY_LABELS
+                ),
+            ),
+            (
                 self.metadata("manual-entry", "verbatim-excerpt"),
                 "## Key passages\n\n"
                 "intro\n"

@@ -465,6 +465,7 @@ def markdown_list_items(lines: list[str]) -> list[str]:
             marker_content = match.group("content")
             if (
                 in_item
+                and current
                 and indent >= item_indent
                 and not blank_after_item
                 and (

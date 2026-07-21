@@ -828,6 +828,87 @@ class CaptureFidelityValidationTests(unittest.TestCase):
             ):
                 self.assertEqual(self.fidelity_errors(metadata, body), [])
 
+    def test_multiline_capture_boundary_value_is_accepted(self) -> None:
+        body = self.boundary(
+            **{"Paraphrased material": "Owner-declared summary."}
+        ).replace(
+            "- Paraphrased material: Owner-declared summary.",
+            "- Paraphrased material:\n  Owner-declared summary.",
+        )
+
+        self.assertEqual(
+            self.fidelity_errors(
+                self.metadata("manual-entry", "paraphrased"),
+                body,
+            ),
+            [],
+        )
+
+    def test_multiline_quoted_passages_are_checked(self) -> None:
+        cases = (
+            (
+                self.metadata(
+                    "transcription",
+                    "transcribed",
+                    source_type="video",
+                ),
+                self.boundary(
+                    **{"Extracted or transcribed material": "Typed transcript."}
+                )
+                + "\n\n## Key passages\n\n"
+                "- “Quoted transcript\n"
+                "  continuation.” — page 7",
+                "require a timestamp locator",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                self.boundary(
+                    **{"Paraphrased material": "Owner-declared summary."}
+                )
+                + "\n\n## Key passages\n\n"
+                "- “Quoted summary\n"
+                "  continuation.” — page 7",
+                "must not use quoted Key passages",
+            ),
+        )
+        for metadata, body, expected in cases:
+            with self.subTest(mode=metadata["capture_mode"]):
+                errors = self.fidelity_errors(metadata, body)
+                self.assertTrue(any(expected in error for error in errors), errors)
+
+    def test_html_and_fence_states_do_not_interfere(self) -> None:
+        body = (
+            "<script>\n"
+            "```\n"
+            "</script>\n"
+            "```\n"
+            "inside fenced code\n"
+            "```\n"
+            "## Key passages\n\n"
+            "- “Visible evidence.” — page 3"
+        )
+
+        self.assertEqual(
+            self.fidelity_errors(
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                body,
+            ),
+            [],
+        )
+        paragraph_body = (
+            "intro\n"
+            "<custom-element>\n"
+            "## Key passages\n\n"
+            "- “Visible after paragraph HTML.” — page 4"
+        )
+        self.assertEqual(
+            self.fidelity_errors(
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                paragraph_body,
+            ),
+            [],
+        )
+
     def test_invalid_capture_prerequisites_fail_closed(self) -> None:
         primary_not_extracted = {
             "path": "Assets/evidence.pdf",
@@ -969,6 +1050,70 @@ class CaptureFidelityValidationTests(unittest.TestCase):
             (
                 self.metadata("manual-entry", "verbatim-excerpt"),
                 "<!--\n## Key passages\n- “Fake.” — page 1\n-->",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "<script>\n"
+                "## Key passages\n"
+                "- “Hidden.” — page 1\n"
+                "</script>",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "<div>\n"
+                "## Key passages\n"
+                "- “Hidden.” — page 1\n"
+                "</div>",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "<script>\n"
+                "## Key passages\n"
+                "- “Hidden through EOF.” — page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                "<div>\n"
+                + self.boundary(
+                    **{"Paraphrased material": "Hidden owner summary."}
+                )
+                + "\n</div>",
+                "requires all exact Capture Boundary labels",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "<?processor\n"
+                "## Key passages\n"
+                "- “Hidden.” — page 1\n"
+                "?>",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "<!DECLARATION\n"
+                "## Key passages\n"
+                "- “Hidden.” — page 1\n"
+                ">",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "<![CDATA[\n"
+                "## Key passages\n"
+                "- “Hidden.” — page 1\n"
+                "]]>",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "<custom-element>\n"
+                "## Key passages\n"
+                "- “Hidden.” — page 1\n"
+                "</custom-element>",
                 "requires an exact Key passages locator",
             ),
             (

@@ -97,6 +97,24 @@ TIMESTAMP_LOCATOR_RE = re.compile(
     r"(?:\s+|:\s*)(?P<value>\S.*)$",
     re.IGNORECASE,
 )
+COMMONMARK_RAW_TAG_RE = re.compile(
+    r"^<(?P<tag>script|pre|style|textarea)(?=[ \t>]|$)",
+    re.IGNORECASE,
+)
+COMMONMARK_BLOCK_TAG_RE = re.compile(
+    r"^</?(?:address|article|aside|base|basefont|blockquote|body|caption|center|"
+    r"col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|"
+    r"footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|"
+    r"link|main|menu|menuitem|nav|noframes|ol|optgroup|option|p|param|search|"
+    r"section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul)"
+    r"(?=[ \t]|/?>|$)",
+    re.IGNORECASE,
+)
+COMMONMARK_COMPLETE_TAG_RE = re.compile(
+    r"^(?:</[A-Za-z][A-Za-z0-9-]*\s*>|"
+    r"<[A-Za-z][A-Za-z0-9-]*(?:\s+[^<>]*?)?\s*/?>)[ \t]*$"
+)
+
 
 
 
@@ -1068,17 +1086,108 @@ def markdown_without_fenced_code(text: str) -> str:
     return "".join(masked)
 
 
+def markdown_without_hidden_blocks(text: str) -> str:
+    """Mask fenced code and CommonMark raw HTML while preserving newlines."""
+    masked: list[str] = []
+    fence_character: str | None = None
+    fence_length = 0
+    html_end_re: re.Pattern[str] | None = None
+    html_until_blank = False
+    paragraph_open = False
+    fence_opening_re = re.compile(r"^ {0,3}(?P<fence>`{3,}|~{3,})")
+    paragraph_interrupt_re = re.compile(
+        r"^ {0,3}(?:#{1,6}(?:[ \t]+|$)|>|"
+        r"(?:[-+*]|\d+[.)])(?:[ \t]+|$))"
+    )
+    thematic_break_re = re.compile(
+        r"^ {0,3}(?:(?:\*[ \t]*){3,}|(?:-[ \t]*){3,}|(?:_[ \t]*){3,})$"
+    )
+    for line in text.splitlines(keepends=True):
+        content = line.rstrip("\r\n")
+        newline = line[len(content) :]
+        if html_end_re is not None:
+            masked.append(newline)
+            if html_end_re.search(content):
+                html_end_re = None
+            continue
+        if html_until_blank:
+            masked.append(newline)
+            if not content.strip():
+                html_until_blank = False
+            continue
+        if fence_character is not None:
+            closing_re = re.compile(
+                rf"^ {{0,3}}{re.escape(fence_character)}"
+                rf"{{{fence_length},}}[ \t]*$"
+            )
+            if closing_re.fullmatch(content):
+                fence_character = None
+                fence_length = 0
+            masked.append(newline)
+            continue
+
+        indent = len(content) - len(content.lstrip(" "))
+        stripped = content[indent:] if indent <= 3 else ""
+        raw_tag = COMMONMARK_RAW_TAG_RE.match(stripped)
+        if raw_tag:
+            html_end_re = re.compile(
+                rf"</{re.escape(raw_tag.group('tag'))}\s*>",
+                re.IGNORECASE,
+            )
+        elif stripped.startswith("<!--"):
+            html_end_re = re.compile(r"-->")
+        elif stripped.startswith("<?"):
+            html_end_re = re.compile(r"\?>")
+        elif stripped.startswith("<![CDATA["):
+            html_end_re = re.compile(r"\]\]>")
+        elif (
+            len(stripped) > 2
+            and stripped.startswith("<!")
+            and "A" <= stripped[2] <= "Z"
+        ):
+            html_end_re = re.compile(r">")
+        elif COMMONMARK_BLOCK_TAG_RE.match(stripped):
+            html_until_blank = True
+        elif (
+            COMMONMARK_COMPLETE_TAG_RE.fullmatch(stripped)
+            and not paragraph_open
+        ):
+            html_until_blank = True
+        else:
+            fence = fence_opening_re.match(content)
+            if fence and not (
+                fence.group("fence").startswith("`")
+                and "`" in content[fence.end() :]
+            ):
+                marker = fence.group("fence")
+                fence_character = marker[0]
+                fence_length = len(marker)
+                paragraph_open = False
+                masked.append(newline)
+            else:
+                masked.append(line)
+                if (
+                    not content.strip()
+                    or paragraph_interrupt_re.match(content)
+                    or thematic_break_re.fullmatch(content)
+                ):
+                    paragraph_open = False
+                else:
+                    paragraph_open = True
+            continue
+
+        paragraph_open = False
+        masked.append(newline)
+        if html_end_re is not None and html_end_re.search(stripped):
+            html_end_re = None
+
+    return "".join(masked)
+
 def markdown_section_lines(text: str, heading: str) -> list[str]:
     frontmatter = FRONTMATTER_RE.match(text)
     if frontmatter:
         text = text[frontmatter.end() :]
-    visible = markdown_without_fenced_code(text)
-    visible = re.sub(
-        r"<!--.*?(?:-->|$)",
-        lambda match: re.sub(r"[^\r\n]", "", match.group(0)),
-        visible,
-        flags=re.DOTALL,
-    )
+    visible = markdown_without_hidden_blocks(text)
     lines = visible.splitlines()
     heading_re = re.compile(rf"^ {{0,3}}## {re.escape(heading)}[ \t]*$")
     start: int | None = None
@@ -1094,6 +1203,28 @@ def markdown_section_lines(text: str, heading: str) -> list[str]:
             break
         section.append(line)
     return section
+
+
+def markdown_list_items(lines: list[str]) -> list[str]:
+    """Return dash-list items with indented continuation lines joined."""
+    items: list[str] = []
+    current: list[str] = []
+    continuation_re = re.compile(r"^(?: {2,}|\t)(?P<content>\S.*)$")
+    for line in lines:
+        if match := re.match(r"^ {0,3}-\s+(.*)$", line):
+            if current:
+                items.append(" ".join(current).strip())
+            current = [match.group(1).strip()]
+            continue
+        if current and (match := continuation_re.match(line)):
+            current.append(match.group("content").strip())
+            continue
+        if line.strip() and current:
+            items.append(" ".join(current).strip())
+            current = []
+    if current:
+        items.append(" ".join(current).strip())
+    return items
 
 
 def placeholder_value(value: str) -> bool:
@@ -1118,8 +1249,10 @@ def concrete_locator(pattern: re.Pattern[str], value: str) -> bool:
 
 def capture_boundary_values(text: str) -> dict[str, str]:
     values: dict[str, str] = {}
-    for line in markdown_section_lines(text, "Capture boundary"):
-        match = re.match(r"^ {0,3}-\s+([^:]+):\s*(.*)$", line)
+    for item in markdown_list_items(
+        markdown_section_lines(text, "Capture boundary")
+    ):
+        match = re.match(r"^([^:]+):\s*(.*)$", item)
         if match and match.group(1) in CAPTURE_BOUNDARY_LABELS:
             values[match.group(1)] = match.group(2).strip()
     return values
@@ -1127,10 +1260,9 @@ def capture_boundary_values(text: str) -> dict[str, str]:
 
 def key_passage_items(text: str) -> list[str]:
     return [
-        match.group(1).strip()
-        for line in markdown_section_lines(text, "Key passages")
-        if (match := re.match(r"^ {0,3}-\s+(.*)$", line))
-        and not placeholder_value(match.group(1))
+        item
+        for item in markdown_list_items(markdown_section_lines(text, "Key passages"))
+        if not placeholder_value(item)
     ]
 
 

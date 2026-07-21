@@ -70,7 +70,7 @@ A supplied URL, date, tag, alias, author, or semantic `source_type` that fails t
 - A hash-bound exact local Asset uses `capture_method: asset`. Use `capture_mode: preserved-original` only when the owner or supplied metadata establishes that the Asset is the original captured representation; otherwise use `unknown`.
 - URL-only intake uses `url-reference` + `reference-only`.
 - Hand-typed content uses `manual-entry` + `unknown`. Use `manual-entry` + `paraphrased` only for an explicitly owner-declared summary with a populated Paraphrased-material boundary.
-- Parser output uses `file-extraction` + `extracted`; OCR uses `ocr` + `extracted`; audio/video transcript input uses `transcription` + `transcribed`. Record the tool-assisted representation in `Extracted or transcribed material`.
+- Parser output uses `file-extraction` + `extracted`; OCR uses `ocr` + `extracted`. Use `transcription` + `transcribed` only with a bound audio/video Asset, or with a valid URL whose supplied `source_type` is `video` or `podcast`; record the tool-assisted representation in `Extracted or transcribed material`. A text transcript without that provenance remains `unknown` or stops for owner classification.
 - A web clipper uses `web-clipper`, but its mode stays `unknown` unless preserved bytes/provenance and the documented Capture Boundary justify a stronger mode.
 - Imported material uses `import`; its mode follows the evidence, never the import label.
 - Multi-route or multi-representation intake uses `mixed` and documents at least two concrete boundary categories.

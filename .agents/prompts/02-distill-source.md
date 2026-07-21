@@ -17,11 +17,12 @@ and synonyms before creating notes.
 Create or update the fewest atomic Concept drafts needed. Each claim must be
 traceable to an input Source, fact must be separated from inference, and
 uncertainty must be explicit. Record every Source's capture_mode before
-extracting claims. If any input uses unknown, paraphrased, or reference-only,
-add a non-empty ## Evidence limitations section with the exact applicable
-statements from .agents/workflows/source-to-knowledge.md. Retain weaker-source
-limitations when stronger evidence is also cited, never present a paraphrase
-as a quotation, and never upgrade unknown or paraphrased evidence. Set
+extracting claims. For each draft, if any Source it cites uses unknown,
+paraphrased, or reference-only, add a non-empty ## Evidence limitations
+section with the exact applicable statements from
+.agents/workflows/source-to-knowledge.md. Retain weaker-source limitations
+when stronger evidence is also cited, never present a paraphrase as a
+quotation, and never upgrade unknown or paraphrased evidence. Set
 status: draft, reviewed: null, and the appropriate confidence. Never modify
 the Source except for an explicitly requested append-only Derived notes link
 or amendment.

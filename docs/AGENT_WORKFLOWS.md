@@ -46,7 +46,7 @@ Distillation records every Source's `capture_mode`. Drafts using `unknown`, `par
 - Generated synthesis is distinguishable from reviewed knowledge.
 - Destructive actions require exact targets and explicit approval.
 - Classified Source intake never fetches URLs, overwrites binaries, upgrades uncertain fidelity, or treats machine extraction as reviewed evidence; direct owner review is the default and advanced signed `source_review` is optional. Current Asset bytes and mechanical capture prerequisites are revalidated before distillation.
-- Every factual transformation preserves a path and declared capture boundary back to evidence.
+- Every factual transformation preserves a path back to evidence; Source-backed transformations also preserve the declared capture boundary.
 - Broad “clean up my vault” requests begin with a read-only report.
 
 ## Agent handoff format

@@ -1069,6 +1069,15 @@ class CaptureFidelityValidationTests(unittest.TestCase):
                 "Paraphrased material",
             ),
             (
+                self.metadata("manual-entry", "paraphrased"),
+                "## Capture boundary\n\n"
+                + "\n".join(
+                    f"- preface\n  2. {label}: concrete value"
+                    for label in validate_vault.CAPTURE_BOUNDARY_LABELS
+                ),
+                "requires all exact Capture Boundary labels",
+            ),
+            (
                 self.metadata("manual-entry", "preserved-original"),
                 "",
                 "requires a primary Asset",
@@ -1319,6 +1328,13 @@ class CaptureFidelityValidationTests(unittest.TestCase):
                 "- context\n\n"
                 "      first code line\n"
                 "      “Hidden later code.” — page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
+                "-     first code line\n"
+                "      “Hidden after marker-line code.” — page 1",
                 "requires an exact Key passages locator",
             ),
             (

@@ -1334,6 +1334,20 @@ def markdown_list_items(lines: list[str]) -> list[str]:
         if match := MARKDOWN_LIST_CONTAINER_RE.match(line):
             marker_text = match.group("marker")
             marker_content = match.group("content")
+            if (
+                in_item
+                and indent >= item_indent
+                and not blank_after_item
+                and (
+                    not marker_content.strip()
+                    or (
+                        marker_text[0].isdigit()
+                        and int(marker_text[:-1]) != 1
+                    )
+                )
+            ):
+                current.append(line[item_indent:].strip())
+                continue
             if not in_item and outside_paragraph_open and (
                 not marker_content.strip()
                 or (
@@ -1360,7 +1374,7 @@ def markdown_list_items(lines: list[str]) -> list[str]:
             if content.strip() and content_indent < 4:
                 current.append(content.strip())
             blank_after_item = False
-            in_indented_code = False
+            in_indented_code = bool(content.strip() and content_indent >= 4)
             outside_paragraph_open = False
             continue
         if not line.strip():

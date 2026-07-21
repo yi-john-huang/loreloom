@@ -431,6 +431,8 @@ def markdown_list_items(lines: list[str]) -> list[str]:
     fence_length = 0
     in_indented_code = False
     previous_quote_depth = 0
+    item_paragraph_open = False
+    item_paragraph_quote_depth = 0
 
     def flush() -> None:
         if current:
@@ -465,7 +467,8 @@ def markdown_list_items(lines: list[str]) -> list[str]:
             marker_content = match.group("content")
             if (
                 in_item
-                and current
+                and item_paragraph_open
+                and quote_depth == item_paragraph_quote_depth
                 and indent >= item_indent
                 and not blank_after_item
                 and (
@@ -477,6 +480,7 @@ def markdown_list_items(lines: list[str]) -> list[str]:
                 )
             ):
                 current.append(line[item_indent:].strip())
+                item_paragraph_quote_depth = quote_depth
                 continue
             if not in_item and outside_paragraph_open and (
                 not marker_content.strip()
@@ -503,6 +507,12 @@ def markdown_list_items(lines: list[str]) -> list[str]:
             content_indent = len(content) - len(content.lstrip(" "))
             if content.strip() and content_indent < 4:
                 current.append(content.strip())
+            item_paragraph_open = bool(
+                content.strip()
+                and content_indent < 4
+                and markdown_paragraph_open_after(content.strip(), False)
+            )
+            item_paragraph_quote_depth = quote_depth
             blank_after_item = False
             in_indented_code = bool(content.strip() and content_indent >= 4)
             outside_paragraph_open = False
@@ -510,6 +520,7 @@ def markdown_list_items(lines: list[str]) -> list[str]:
         if not line.strip():
             if in_item:
                 blank_after_item = True
+                item_paragraph_open = False
             else:
                 outside_paragraph_open = False
             continue
@@ -528,16 +539,25 @@ def markdown_list_items(lines: list[str]) -> list[str]:
             marker = fence.group("marker")
             fence_character = marker[0]
             fence_length = len(marker)
+            item_paragraph_open = False
             continue
         if in_indented_code:
             if indent >= item_indent and relative_indent >= 4:
+                item_paragraph_open = False
                 continue
             in_indented_code = False
         if indent >= item_indent:
             if blank_after_item and relative_indent >= 4:
                 in_indented_code = True
+                item_paragraph_open = False
                 continue
             current.append(relative.strip())
+            item_paragraph_open = markdown_paragraph_open_after(
+                relative,
+                item_paragraph_open
+                and quote_depth == item_paragraph_quote_depth,
+            )
+            item_paragraph_quote_depth = quote_depth
             blank_after_item = False
             continue
         if (
@@ -547,12 +567,15 @@ def markdown_list_items(lines: list[str]) -> list[str]:
             and markdown_paragraph_open_after(line, True)
         ):
             current.append(line.strip())
+            item_paragraph_open = True
+            item_paragraph_quote_depth = quote_depth
             continue
         flush()
         in_item = False
         item_indent = 0
         blank_after_item = False
         in_indented_code = False
+        item_paragraph_open = False
         outside_paragraph_open = markdown_paragraph_open_after(line, False)
 
     flush()

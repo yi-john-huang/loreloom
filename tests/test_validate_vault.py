@@ -960,6 +960,10 @@ class CaptureFidelityValidationTests(unittest.TestCase):
             "<custom-element>\n"
             "## Key passages\n\n"
             "- “Visible after list paragraph.” — page 6",
+            "intro\n"
+            "2. <script>\n"
+            "## Key passages\n\n"
+            "- “Visible after noninterrupting marker.” — page 7",
         ):
             with self.subTest(list_body=list_body):
                 self.assertEqual(
@@ -1230,6 +1234,24 @@ class CaptureFidelityValidationTests(unittest.TestCase):
             ),
             (
                 self.metadata("manual-entry", "verbatim-excerpt"),
+                "- intro\n"
+                "\t<div>\n"
+                "  ## Key passages\n"
+                "  - “Hidden in tabbed HTML.” — page 1\n"
+                "\t</div>",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "- intro\n"
+                "\t```\n"
+                "  ## Key passages\n"
+                "  - “Hidden in tabbed fence.” — page 1\n"
+                "\t```",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
                 "## Key passages\n\n"
                 "- “Visible quotation.” <!-- — page 1 -->",
                 "requires an exact Key passages locator",
@@ -1416,6 +1438,11 @@ sources:
                 "draft",
                 ["[[Sources/weak]]"],
                 "- <!-- limitation -->",
+            ),
+            self.concept(
+                "draft",
+                ["[[Sources/weak]]"],
+                "*<!--\nhidden limitation text\n-->",
             ),
             self.concept(
                 "draft",

@@ -2016,6 +2016,10 @@ class CaptureFidelityContractTests(unittest.TestCase):
             "<custom-element>\n"
             "## Key passages\n\n"
             "- “Visible after list paragraph.” — page 6",
+            "intro\n"
+            "2. <script>\n"
+            "## Key passages\n\n"
+            "- “Visible after noninterrupting marker.” — page 7",
         ):
             with self.subTest(list_body=list_body):
                 self.assertEqual(
@@ -2274,6 +2278,24 @@ class CaptureFidelityContractTests(unittest.TestCase):
                 "  ## Key passages\n"
                 "  - “Hidden in list fence.” — page 1\n"
                 "    ```",
+                "exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "- intro\n"
+                "\t<div>\n"
+                "  ## Key passages\n"
+                "  - “Hidden in tabbed HTML.” — page 1\n"
+                "\t</div>",
+                "exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "- intro\n"
+                "\t```\n"
+                "  ## Key passages\n"
+                "  - “Hidden in tabbed fence.” — page 1\n"
+                "\t```",
                 "exact Key passages locator",
             ),
             (

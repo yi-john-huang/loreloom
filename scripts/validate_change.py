@@ -1128,6 +1128,7 @@ def markdown_container_content(
     line: str, container_indent: int, paragraph_open: bool
 ) -> tuple[str, int]:
     """Return line content relative to an active CommonMark list container."""
+    line = line.expandtabs(4)
     physical_indent = len(line) - len(line.lstrip(" "))
     if container_indent and physical_indent >= container_indent:
         relative = line[container_indent:]
@@ -1157,6 +1158,12 @@ def markdown_container_content(
     if marker := MARKDOWN_LIST_CONTAINER_RE.match(relative):
         spaces = marker.group("spaces")
         content = marker.group("content")
+        marker_text = marker.group("marker")
+        if paragraph_open and (
+            not content.strip()
+            or (marker_text[0].isdigit() and marker_text[:-1] != "1")
+        ):
+            return relative, container_indent
         padding = len(spaces) if len(spaces) <= 4 and content.strip() else 1
         content_offset = (
             len(marker.group("indent")) + len(marker.group("marker")) + padding
@@ -1166,8 +1173,6 @@ def markdown_container_content(
         relative = relative[content_offset:]
 
     return relative, container_indent
-
-
 
 
 def markdown_without_hidden_blocks(text: str) -> str:

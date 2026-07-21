@@ -55,6 +55,32 @@
             "type": {"const": "source"},
             "status": {"enum": ["captured", "processing", "archived"]},
             "source_type": {"enum": ["article", "book", "documentation", "paper", "video", "podcast", "meeting", "personal-observation", "dataset", "other"]},
+            "capture_method": {
+              "enum": [
+                "asset",
+                "url-reference",
+                "web-clipper",
+                "manual-entry",
+                "file-extraction",
+                "ocr",
+                "transcription",
+                "import",
+                "mixed"
+              ]
+            },
+            "capture_mode": {
+              "enum": [
+                "preserved-original",
+                "verbatim-excerpt",
+                "extracted",
+                "transcribed",
+                "paraphrased",
+                "firsthand-observation",
+                "reference-only",
+                "unknown",
+                "mixed"
+              ]
+            },
             "source_url": {
               "anyOf": [
                 {
@@ -125,6 +151,8 @@
           "required": [
             "status",
             "source_type",
+            "capture_method",
+            "capture_mode",
             "source_url",
             "author",
             "published",

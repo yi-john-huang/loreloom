@@ -182,6 +182,8 @@ updated: 2026-07-18
 tags: []
 aliases: []
 source_type: other
+capture_method: asset
+capture_mode: preserved-original
 source_url: ""
 author: ""
 published: null
@@ -211,6 +213,8 @@ updated: 2026-07-18
 tags: []
 aliases: []
 source_type: other
+capture_method: url-reference
+capture_mode: reference-only
 source_url: "{url}"
 author: ""
 published: null
@@ -508,6 +512,8 @@ updated: 2026-07-18
 tags: []
 aliases: []
 source_type: other
+capture_method: manual-entry
+capture_mode: unknown
 source_url: ""
 author: ""
 published: null
@@ -586,6 +592,8 @@ updated: 2026-07-18
 tags: []
 aliases: []
 source_type: other
+capture_method: manual-entry
+capture_mode: unknown
 source_url: ""
 inbox_source: "[[Inbox/capture]]"
 author: ""
@@ -682,6 +690,1076 @@ assets: []
         errors = validate_vault.asset_metadata_errors([source])
 
         self.assertTrue(any("unsafe asset path" in error for error in errors))
+
+
+class CaptureFidelityValidationTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.repo = Path(tempfile.mkdtemp())
+        self.original_root = validate_vault.ROOT
+        validate_vault.ROOT = self.repo
+        (self.repo / "schemas").mkdir(parents=True)
+        shutil.copy2(
+            Path(__file__).resolve().parents[1]
+            / "schemas"
+            / "frontmatter.schema.json",
+            self.repo / "schemas" / "frontmatter.schema.json",
+        )
+
+    def tearDown(self) -> None:
+        validate_vault.ROOT = self.original_root
+        shutil.rmtree(self.repo)
+
+    def write(self, relative_path: str, content: str) -> Path:
+        path = self.repo / relative_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+        return path
+
+    def metadata(self, method: str, mode: str, **overrides: object) -> dict[str, object]:
+        metadata: dict[str, object] = {
+            "type": "source",
+            "source_type": "other",
+            "source_url": "https://example.com/evidence",
+            "capture_method": method,
+            "capture_mode": mode,
+            "assets": [],
+        }
+        metadata.update(overrides)
+        return metadata
+
+    def boundary(self, **values: str) -> str:
+        defaults = {
+            "Capture method": "Recorded route.",
+            "Capture mode": "Recorded representation.",
+            "Original evidence preserved": "None",
+            "Verbatim material": "None",
+            "Extracted or transcribed material": "None",
+            "Paraphrased material": "None",
+            "Unknown or unavailable evidence": "None",
+        }
+        defaults.update(values)
+        return "## Capture boundary\n\n" + "\n".join(
+            f"- {label}: {defaults[label]}"
+            for label in validate_vault.CAPTURE_BOUNDARY_LABELS
+        )
+
+    def fidelity_errors(
+        self, metadata: dict[str, object], body: str = ""
+    ) -> list[str]:
+        return validate_vault.source_capture_fidelity_errors(
+            self.repo / "Sources" / "evidence.md", metadata, body
+        )
+
+    def test_valid_capture_method_and_mode_contracts(self) -> None:
+        primary = {
+            "path": "Assets/evidence.pdf",
+            "media_type": "application/pdf",
+            "role": "primary",
+            "sha256": "a" * 64,
+            "extraction_status": "extracted",
+        }
+        audio = {
+            **primary,
+            "path": "Assets/evidence.wav",
+            "media_type": "audio/wav",
+        }
+        extracted_boundary = self.boundary(
+            **{"Extracted or transcribed material": "Parser output from the primary Asset."}
+        )
+        mixed_boundary = self.boundary(
+            **{
+                "Original evidence preserved": "Primary Asset bytes.",
+                "Paraphrased material": "Summary paragraph.",
+            }
+        )
+        cases = (
+            (
+                self.metadata(
+                    "manual-entry",
+                    "unknown",
+                    source_url="",
+                    inbox_source="[[Inbox/capture]]",
+                ),
+                "",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                self.boundary(
+                    **{"Paraphrased material": "The summary is owner-declared paraphrase."}
+                ),
+            ),
+            (self.metadata("asset", "preserved-original", assets=[primary]), ""),
+            (self.metadata("url-reference", "reference-only"), ""),
+            (
+                self.metadata("file-extraction", "extracted", assets=[primary]),
+                extracted_boundary,
+            ),
+            (
+                self.metadata("transcription", "transcribed", assets=[audio]),
+                extracted_boundary
+                + '\n\n## Key passages\n\n- “Spoken words.” — timestamp 00:00:04',
+            ),
+            (
+                self.metadata(
+                    "transcription",
+                    "transcribed",
+                    source_type="video",
+                ),
+                extracted_boundary
+                + '\n\n## Key passages\n\n- “Spoken words.” — timestamp 00:00:04',
+            ),
+            (
+                self.metadata(
+                    "manual-entry",
+                    "firsthand-observation",
+                    source_type="personal-observation",
+                ),
+                "",
+            ),
+            (self.metadata("mixed", "mixed"), mixed_boundary),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                '## Key passages\n\n- “Exact words.” — page 12',
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                '## Key passages\n\n* “Exact star item.” — line 12',
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                '## Key passages\n\n1. “Exact ordered item.” — section Abstract',
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
+                "- “Visible passage\n"
+                "  ``` `not-a-fence`\n"
+                "  continued.” — page 1",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
+                "> - “Exact blockquoted item.” — page 12",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                "## Capture boundary\n\n"
+                + "\n".join(
+                    f"- \n  2. {label}: concrete value"
+                    for label in validate_vault.CAPTURE_BOUNDARY_LABELS
+                ),
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                "## Capture boundary\n\n"
+                + "\n".join(
+                    f"- preface\n  ### context\n  2. {label}: concrete value"
+                    for label in validate_vault.CAPTURE_BOUNDARY_LABELS
+                ),
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                "## Capture boundary\n\n"
+                + "\n".join(
+                    f"- preface\n  >   2. {label}: concrete value"
+                    for label in validate_vault.CAPTURE_BOUNDARY_LABELS
+                ),
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
+                "intro\n"
+                "> 2. “Exact wording in a new quote.” — page 12",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                self.boundary(
+                    **{"Paraphrased material": "Owner-declared summary."}
+                )
+                + "\n\n## Key passages\n\n"
+                '- <span title="context">Owner summary.</span> — page 1',
+            ),
+        )
+        for metadata, body in cases:
+            with self.subTest(
+                method=metadata["capture_method"], mode=metadata["capture_mode"]
+            ):
+                self.assertEqual(self.fidelity_errors(metadata, body), [])
+
+    def test_multiline_capture_boundary_value_is_accepted(self) -> None:
+        base = self.boundary(
+            **{"Paraphrased material": "Owner-declared summary."}
+        )
+        bodies = (
+            base.replace(
+                "- Paraphrased material: Owner-declared summary.",
+                "- Paraphrased material:\n  Owner-declared summary.",
+            ),
+            base.replace(
+                "- Paraphrased material: Owner-declared summary.",
+                "- Paraphrased material:\nOwner-declared summary.",
+            ),
+        )
+
+        for body in bodies:
+            with self.subTest(body=body):
+                self.assertEqual(
+                    self.fidelity_errors(
+                        self.metadata("manual-entry", "paraphrased"),
+                        body,
+                    ),
+                    [],
+                )
+
+    def test_multiline_quoted_passages_are_checked(self) -> None:
+        cases = (
+            (
+                self.metadata(
+                    "transcription",
+                    "transcribed",
+                    source_type="video",
+                ),
+                self.boundary(
+                    **{"Extracted or transcribed material": "Typed transcript."}
+                )
+                + "\n\n## Key passages\n\n"
+                "- “Quoted transcript\n"
+                "  continuation.” — page 7",
+                "require a timestamp locator",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                self.boundary(
+                    **{"Paraphrased material": "Owner-declared summary."}
+                )
+                + "\n\n## Key passages\n\n"
+                "- “Quoted summary\n"
+                "  continuation.” — page 7",
+                "must not use quoted Key passages",
+            ),
+            (
+                self.metadata(
+                    "transcription",
+                    "transcribed",
+                    source_type="video",
+                ),
+                self.boundary(
+                    **{"Extracted or transcribed material": "Typed transcript."}
+                )
+                + "\n\n## Key passages\n\n"
+                "- “Lazy transcript\n"
+                "continuation.” — page 8",
+                "require a timestamp locator",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                self.boundary(
+                    **{"Paraphrased material": "Owner-declared summary."}
+                )
+                + "\n\n## Key passages\n\n"
+                "- “Lazy summary\n"
+                "continuation.” — page 8",
+                "must not use quoted Key passages",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                self.boundary(
+                    **{"Paraphrased material": "Owner-declared summary."}
+                )
+                + "\n\n## Key passages\n\n"
+                "- &quot;Quoted summary.&quot; — page 1",
+                "must not use quoted Key passages",
+            ),
+        )
+        for metadata, body, expected in cases:
+            with self.subTest(mode=metadata["capture_mode"]):
+                errors = self.fidelity_errors(metadata, body)
+                self.assertTrue(any(expected in error for error in errors), errors)
+
+    def test_html_and_fence_states_do_not_interfere(self) -> None:
+        body = (
+            "<script>\n"
+            "```\n"
+            "</script>\n"
+            "```\n"
+            "inside fenced code\n"
+            "```\n"
+            "## Key passages\n\n"
+            "- “Visible evidence.” — page 3"
+        )
+
+        self.assertEqual(
+            self.fidelity_errors(
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                body,
+            ),
+            [],
+        )
+        paragraph_body = (
+            "intro\n"
+            "<custom-element>\n"
+            "## Key passages\n\n"
+            "- “Visible after paragraph HTML.” — page 4"
+        )
+        self.assertEqual(
+            self.fidelity_errors(
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                paragraph_body,
+            ),
+            [],
+        )
+
+        for list_body in (
+            "intro\n"
+            "2. continuation\n"
+            "<custom-element>\n"
+            "## Key passages\n\n"
+            "- “Visible after ordered marker.” — page 5",
+            "- intro\n"
+            "<custom-element>\n"
+            "## Key passages\n\n"
+            "- “Visible after list paragraph.” — page 6",
+            "intro\n"
+            "2. <script>\n"
+            "## Key passages\n\n"
+            "- “Visible after noninterrupting marker.” — page 7",
+        ):
+            with self.subTest(list_body=list_body):
+                self.assertEqual(
+                    self.fidelity_errors(
+                        self.metadata("manual-entry", "verbatim-excerpt"),
+                        list_body,
+                    ),
+                    [],
+                )
+
+    def test_invalid_capture_prerequisites_fail_closed(self) -> None:
+        primary_not_extracted = {
+            "path": "Assets/evidence.pdf",
+            "media_type": "application/pdf",
+            "role": "supporting",
+            "sha256": "a" * 64,
+            "extraction_status": "not-requested",
+        }
+        cases = (
+            (self.metadata("asset", "unknown"), "", "requires a declared Asset"),
+            (
+                self.metadata("url-reference", "unknown", source_url=""),
+                "",
+                "requires a valid source_url",
+            ),
+            (
+                self.metadata(
+                    "asset",
+                    "preserved-original",
+                    assets=[primary_not_extracted],
+                ),
+                "",
+                "requires a primary Asset",
+            ),
+            (
+                self.metadata("file-extraction", "extracted", assets=[]),
+                self.boundary(
+                    **{
+                        "Extracted or transcribed material": "Parser output was declared."
+                    }
+                ),
+                "requires an extracted or partial Asset",
+            ),
+            (
+                self.metadata(
+                    "file-extraction",
+                    "extracted",
+                    assets=[primary_not_extracted],
+                ),
+                "",
+                "requires an extracted or partial Asset",
+            ),
+            (
+                self.metadata("ocr", "unknown", assets=[primary_not_extracted]),
+                "",
+                "Extracted or transcribed material",
+            ),
+            (
+                self.metadata("transcription", "transcribed"),
+                self.boundary(
+                    **{"Extracted or transcribed material": "Typed transcript."}
+                ),
+                "requires audio/video provenance",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                "## Capture boundary\n\n"
+                + "\n".join(
+                    f"> preface\n2. {label}: concrete value"
+                    for label in validate_vault.CAPTURE_BOUNDARY_LABELS
+                ),
+                "requires all exact Capture Boundary labels",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                "## Capture boundary\n\n"
+                + "\n".join(
+                    f"> - preface\n  2. {label}: concrete value"
+                    for label in validate_vault.CAPTURE_BOUNDARY_LABELS
+                ),
+                "requires all exact Capture Boundary labels",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                self.boundary(**{"Paraphrased material": "**None**"}),
+                "Paraphrased material",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                "## Capture boundary\n\n"
+                + "\n".join(
+                    f"- preface\n  2. {label}: concrete value"
+                    for label in validate_vault.CAPTURE_BOUNDARY_LABELS
+                ),
+                "requires all exact Capture Boundary labels",
+            ),
+            (
+                self.metadata("manual-entry", "preserved-original"),
+                "",
+                "requires a primary Asset",
+            ),
+            (
+                self.metadata("manual-entry", "reference-only", source_url=""),
+                "",
+                "requires a valid source_url",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "```md\n## Key passages\n- “Fake.” — page 1\n```",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "transcribed"),
+                self.boundary(
+                    **{"Extracted or transcribed material": "Typed transcript."}
+                )
+                + '\n\n## Key passages\n\n- “No locator.” — page 2',
+                "requires audio/video provenance",
+            ),
+            (
+                self.metadata(
+                    "transcription",
+                    "transcribed",
+                    source_type="podcast",
+                ),
+                self.boundary(
+                    **{"Extracted or transcribed material": "Typed transcript."}
+                )
+                + '\n\n## Key passages\n\n- “No timestamp.” — section opening',
+                "require a timestamp locator",
+            ),
+            (
+                self.metadata("manual-entry", "firsthand-observation"),
+                "",
+                "requires source_type 'personal-observation'",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                self.boundary()
+                + '\n\n## Key passages\n\n- “Quotation laundering.” — page 1',
+                "requires a non-empty Paraphrased material",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                "## Capture boundary\n\n"
+                "- Paraphrased material: Owner-declared summary.",
+                "requires all exact Capture Boundary labels",
+            ),
+            (
+                self.metadata("mixed", "mixed"),
+                self.boundary(
+                    **{"Original evidence preserved": "One concrete category."}
+                ),
+                "requires at least two concrete Capture Boundary entries",
+            ),
+        )
+        for metadata, body, expected in cases:
+            with self.subTest(
+                method=metadata["capture_method"], mode=metadata["capture_mode"]
+            ):
+                errors = self.fidelity_errors(metadata, body)
+                self.assertTrue(any(expected in error for error in errors), errors)
+
+    def test_hidden_sections_and_placeholder_locators_fail_closed(self) -> None:
+        cases = (
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "---\nnotes: |\n  ## Key passages\n  - “Fake.” — page 1\n---\n",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "    ## Key passages\n\n    - “Fake.” — page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n    - “Fake.” — page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "<!--\n## Key passages\n- “Fake.” — page 1\n-->",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "<script>\n"
+                "## Key passages\n"
+                "- “Hidden.” — page 1\n"
+                "</script>",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "<div>\n"
+                "## Key passages\n"
+                "- “Hidden.” — page 1\n"
+                "</div>",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "<script>\n"
+                "## Key passages\n"
+                "- “Hidden through EOF.” — page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                "<div>\n"
+                + self.boundary(
+                    **{"Paraphrased material": "Hidden owner summary."}
+                )
+                + "\n</div>",
+                "requires all exact Capture Boundary labels",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "<?processor\n"
+                "## Key passages\n"
+                "- “Hidden.” — page 1\n"
+                "?>",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "<!DECLARATION\n"
+                "## Key passages\n"
+                "- “Hidden.” — page 1\n"
+                ">",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "<![CDATA[\n"
+                "## Key passages\n"
+                "- “Hidden.” — page 1\n"
+                "]]>",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "<custom-element>\n"
+                "## Key passages\n"
+                "- “Hidden.” — page 1\n"
+                "</custom-element>",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "Title\n"
+                "===\n"
+                "<custom-element>\n"
+                "## Key passages\n"
+                "- “Hidden after Setext.” — page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                '<custom title=">">\n'
+                "## Key passages\n"
+                "- “Hidden by quoted attribute.” — page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n"
+                "  - context\n"
+                "    ```\n"
+                "    “Hidden in nested fence.” — page 1\n"
+                "    ```",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
+                "- <script>\n"
+                "  “Hidden item evidence.” — page 1\n"
+                "  </script>",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "- intro\n"
+                "    <div>\n"
+                "  ## Key passages\n"
+                "  - “Hidden in nested HTML.” — page 1\n"
+                "    </div>",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "- intro\n"
+                "    ```\n"
+                "  ## Key passages\n"
+                "  - “Hidden in list fence.” — page 1\n"
+                "    ```",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "- intro\n"
+                "\t<div>\n"
+                "  ## Key passages\n"
+                "  - “Hidden in tabbed HTML.” — page 1\n"
+                "\t</div>",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "- intro\n"
+                "\t```\n"
+                "  ## Key passages\n"
+                "  - “Hidden in tabbed fence.” — page 1\n"
+                "\t```",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
+                "intro\n"
+                "01. <script>\n"
+                "    “Hidden after zero-padded marker.” — page 1\n"
+                "    </script>",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
+                "- context\n\n"
+                "\t\t“Hidden in indented code.” — page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
+                "- ### context\n"
+                "“Outside item.” — page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
+                "- context\n"
+                "> “Outside block quote.” — page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
+                "intro\n"
+                "2. “Not a list item.” — page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
+                "- context\n\n"
+                "      first code line\n"
+                "      “Hidden later code.” — page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
+                "-     first code line\n"
+                "      “Hidden after marker-line code.” — page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
+                "-     “Hidden first-line code.” — page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
+                "- **<excerpt>** — page **<page>**",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
+                "- “Visible quotation.” <!-- — page 1 -->",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata(
+                    "transcription",
+                    "transcribed",
+                    source_type="video",
+                ),
+                self.boundary(
+                    **{"Extracted or transcribed material": "Typed transcript."}
+                )
+                + "\n\n## Key passages\n\n"
+                "- “Visible quotation.” <!-- — timestamp 00:01 -->",
+                "require a timestamp locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n- “Fake.” fake-page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n- “Fake.” — page <page>",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n- — page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n- <excerpt> — page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n- — — page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n- ... — page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata(
+                    "transcription",
+                    "transcribed",
+                    source_type="video",
+                ),
+                self.boundary(
+                    **{"Extracted or transcribed material": "Typed transcript."}
+                )
+                + "\n\n## Key passages\n\n"
+                '- “Fake.” — timestamp {{timestamp}}',
+                "require a timestamp locator",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                self.boundary().replace(
+                    "- Paraphrased material: None",
+                    "- Paraphrased material: <!--\n"
+                    "  add a substantive explanation\n"
+                    "  -->",
+                ),
+                "requires a non-empty Paraphrased material",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                self.boundary(
+                    **{"Paraphrased material": "Owner-declared summary."}
+                ).replace("\n-", "\n    -"),
+                "requires all exact Capture Boundary labels",
+            ),
+        )
+        for metadata, body, expected in cases:
+            with self.subTest(body=body):
+                errors = self.fidelity_errors(metadata, body)
+                self.assertTrue(any(expected in error for error in errors), errors)
+
+    def test_missing_fields_and_invalid_enums_are_reported(self) -> None:
+        metadata = self.metadata("manual-entry", "unknown")
+        del metadata["capture_method"]
+        del metadata["capture_mode"]
+        errors = self.fidelity_errors(metadata)
+        self.assertIn(
+            "Source missing required capture classification field(s): "
+            "capture_method, capture_mode; classify manually (no value was inferred)",
+            errors,
+        )
+
+        self.write("Inbox/capture.md", "# capture\n")
+        source = self.write(
+            "Sources/evidence.md",
+            """---
+type: source
+title: evidence
+status: processing
+created: 2026-07-18
+updated: 2026-07-18
+tags: []
+aliases: []
+source_type: other
+capture_method: invented
+capture_mode: synthetic
+source_url: ""
+inbox_source: "[[Inbox/capture]]"
+author: ""
+published: null
+captured: 2026-07-18
+review_status: needs-review
+reviewed: null
+assets: []
+---
+
+# evidence
+""",
+        )
+        schema_errors = validate_vault.schema_errors([source])
+        self.assertTrue(any("capture_method" in error for error in schema_errors))
+        self.assertTrue(any("capture_mode" in error for error in schema_errors))
+
+    def reviewed_source(self, mode: str, title: str) -> str:
+        return f"""---
+type: source
+title: {title}
+status: captured
+created: 2026-07-18
+updated: 2026-07-18
+tags: []
+aliases: []
+source_type: other
+capture_method: url-reference
+capture_mode: {mode}
+source_url: "https://example.com/{title}"
+author: ""
+published: null
+captured: 2026-07-18
+review_status: reviewed
+reviewed: 2026-07-18
+assets: []
+---
+
+# {title}
+"""
+
+    def concept(self, status: str, sources: list[str], limitation: str = "") -> str:
+        reviewed = "2026-07-18" if status == "evergreen" else "null"
+        links = "\n".join(f'  - "{source}"' for source in sources)
+        limitation_section = (
+            f"\n## Evidence limitations\n\n{limitation}\n" if limitation else ""
+        )
+        return f"""---
+type: concept
+title: claim
+status: {status}
+created: 2026-07-18
+updated: 2026-07-18
+tags: []
+aliases: []
+confidence: low
+reviewed: {reviewed}
+sources:
+{links}
+---
+
+# claim
+{limitation_section}"""
+
+    def test_placeholder_limitations_do_not_suppress_warnings(self) -> None:
+        weak = self.write(
+            "Sources/weak.md", self.reviewed_source("unknown", "weak")
+        )
+        draft = self.write(
+            "Knowledge/claim.md",
+            self.concept("draft", ["[[Sources/weak]]"]),
+        )
+        contents = (
+            self.concept("draft", ["[[Sources/weak]]"], "-"),
+            self.concept(
+                "draft",
+                ["[[Sources/weak]]"],
+                "- <!-- limitation -->",
+            ),
+            self.concept(
+                "draft",
+                ["[[Sources/weak]]"],
+                "*<!--\nhidden limitation text\n-->",
+            ),
+            self.concept(
+                "draft",
+                ["[[Sources/weak]]"],
+                "    Hidden in an indented code block.",
+            ),
+            self.concept(
+                "draft",
+                ["[[Sources/weak]]"],
+                "-     Hidden code on the marker line.",
+            ),
+            self.concept(
+                "draft",
+                ["[[Sources/weak]]"],
+                "<span></span>",
+            ),
+            self.concept(
+                "draft",
+                ["[[Sources/weak]]"],
+                "[]()",
+            ),
+            *(
+                self.concept("draft", ["[[Sources/weak]]"], limitation)
+                for limitation in (
+                    "---",
+                    "***",
+                    "___",
+                    ">",
+                    "> <!-- limitation -->",
+                    "- [ ]",
+                )
+            ),
+            self.concept("draft", ["[[Sources/weak]]"]).replace(
+                "sources:\n",
+                "notes: |\n"
+                "  ## Evidence limitations\n"
+                "  - Hidden in frontmatter.\n"
+                "sources:\n",
+            ),
+        )
+        for content in contents:
+            with self.subTest(content=content):
+                draft.write_text(content, encoding="utf-8")
+                warnings = validate_vault.concept_capture_fidelity_warnings(
+                    [weak, draft]
+                )
+                self.assertTrue(
+                    any("Concept cites unknown" in warning for warning in warnings),
+                    warnings,
+                )
+
+    def test_low_fidelity_concept_warnings_and_suppression(self) -> None:
+        weak = self.write(
+            "Sources/weak.md", self.reviewed_source("unknown", "weak")
+        )
+        strong = self.write(
+            "Sources/strong.md", self.reviewed_source("verbatim-excerpt", "strong")
+        )
+        draft = self.write(
+            "Knowledge/claim.md",
+            self.concept("draft", ["[[Sources/weak]]"]),
+        )
+        warnings = validate_vault.concept_capture_fidelity_warnings(
+            [weak, strong, draft]
+        )
+        self.assertTrue(any("Concept cites unknown" in warning for warning in warnings))
+
+        draft.write_text(
+            self.concept("draft", ["[[Sources/strong]]"]), encoding="utf-8"
+        )
+        self.assertEqual(
+            validate_vault.concept_capture_fidelity_warnings([weak, strong, draft]),
+            [],
+        )
+
+        draft.write_text(
+            self.concept(
+                "draft",
+                ["[[Sources/weak]]"],
+                "Capture fidelity is unknown; the original was not revalidated.",
+            ),
+            encoding="utf-8",
+        )
+        self.assertEqual(
+            validate_vault.concept_capture_fidelity_warnings([weak, strong, draft]),
+            [],
+        )
+
+        for limitation in (
+            "> Capture fidelity remains unknown.",
+            "- [ ] Revalidate the original evidence before relying on exact wording.",
+            "- \n    Actual visible limitation.",
+        ):
+            with self.subTest(limitation=limitation):
+                draft.write_text(
+                    self.concept(
+                        "draft",
+                        ["[[Sources/weak]]"],
+                        limitation,
+                    ),
+                    encoding="utf-8",
+                )
+                self.assertEqual(
+                    validate_vault.concept_capture_fidelity_warnings(
+                        [weak, strong, draft]
+                    ),
+                    [],
+                )
+
+        draft.write_text(
+            self.concept("evergreen", ["[[Sources/weak]]"]), encoding="utf-8"
+        )
+        warnings = validate_vault.concept_capture_fidelity_warnings(
+            [weak, strong, draft]
+        )
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("relies exclusively", warnings[0])
+
+        draft.write_text(
+            self.concept(
+                "evergreen",
+                ["[[Sources/weak]]", "[[Sources/strong]]"],
+            ),
+            encoding="utf-8",
+        )
+        warnings = validate_vault.concept_capture_fidelity_warnings(
+            [weak, strong, draft]
+        )
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("Concept cites unknown", warnings[0])
+        self.assertNotIn("relies exclusively", warnings[0])
+
+        daily = self.write(
+            "Daily/2026-07-18.md",
+            "---\ntype: daily\ntitle: 2026-07-18\nstatus: captured\n"
+            "created: 2026-07-18\nupdated: 2026-07-18\ntags: []\n"
+            "aliases: []\ndate: 2026-07-18\n---\n",
+        )
+        draft.write_text(
+            self.concept(
+                "evergreen",
+                ["[[Sources/weak]]", "[[Daily/2026-07-18]]"],
+            ),
+            encoding="utf-8",
+        )
+        warnings = validate_vault.concept_capture_fidelity_warnings(
+            [weak, strong, daily, draft]
+        )
+        self.assertEqual(len(warnings), 1)
+        self.assertNotIn("relies exclusively", warnings[0])
+
+        draft.write_text(
+            self.concept(
+                "draft",
+                ["[[Sources/weak]]", "[[Sources/missing]]"],
+            ),
+            encoding="utf-8",
+        )
+        self.assertEqual(
+            validate_vault.concept_capture_fidelity_warnings([weak, strong, draft]),
+            [],
+        )
 
 
 class CodexAgentConfigurationTests(unittest.TestCase):

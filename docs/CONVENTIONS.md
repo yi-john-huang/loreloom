@@ -47,6 +47,8 @@ sources:
 
 Use inline references near claims when a note has multiple sources or contentious details. Quotes must be short, exact, and clearly marked. Never cite a generated Wiki page as primary evidence.
 
+For Source evidence, keep `source_type` (what it is), `capture_method` (how it entered), and `capture_mode` (how the representation relates to original evidence) distinct. A verbatim Key-passage list item ends with an exact `page`, `timestamp`, `frame`, `line`, `section`, or `region` locator. Concepts that cite `unknown`, `paraphrased`, or `reference-only` Sources retain a non-empty `## Evidence limitations` section; stronger evidence does not erase those limitations.
+
 Personal observations may cite a Daily note or use `evidence: personal-observation`; clearly distinguish observation from general fact.
 
 ## Knowledge note shape

@@ -8,7 +8,7 @@ Agent workflows are small, reviewable transformations. They are not an unattende
 |---|---|---|---|
 | Triage | Inbox, existing notes | Inbox metadata, proposals | Before moves/deletes |
 | Distiller | Reviewed, revalidated Sources; Daily notes; existing Knowledge | Draft Knowledge | Before reading Sources, and before evergreen status |
-| Asset intake | Exact owner Assets, absolute HTTP(S) URLs, Inbox context | Editable processing Source intake | Before owner review |
+| Classified Source intake | Exact owner Assets, absolute HTTP(S) URLs, Inbox context | Editable processing Source with Capture Boundary | Before owner review |
 | Linker | Knowledge, MOCs | Suggested links or approved edits | Before broad rewrites |
 | Wiki builder | Reviewed Knowledge | Generated Wiki | Review material synthesis |
 | Reviewer | All Markdown | Report by default | Before fixes |
@@ -29,11 +29,15 @@ Every mutating workflow follows:
 ## Provided workflows
 
 - [`source-to-knowledge.md`](../.agents/workflows/source-to-knowledge.md): capture to cited concept drafts.
-- [`asset-to-source.md`](../.agents/workflows/asset-to-source.md): create editable, provenance-bound Source intake from exact Assets or URLs.
+- [`asset-to-source.md`](../.agents/workflows/asset-to-source.md): create editable, provenance-bound Source intake from exact Assets, URLs, or existing Inbox provenance.
 - [`regenerate-wiki.md`](../.agents/workflows/regenerate-wiki.md): rebuild a declared synthesis while preserving human blocks.
 - [`weekly-maintenance.md`](../.agents/workflows/weekly-maintenance.md): report and optionally repair vault health.
 
 The corresponding discoverable skills are `$capture-vault-source`, `$triage-vault-inbox`, `$distill-vault-sources`, `$connect-vault-notes`, `$regenerate-vault-wiki`, and `$audit-vault-health`.
+
+Source intake keeps three fields distinct: `source_type` is what the evidence is, `capture_method` is how it entered, and `capture_mode` is how the representation relates to original evidence. Manual entry defaults to `unknown`; exact local originals, URL references, parser/OCR output, transcripts, and mixed intake use the evidence-based defaults in `asset-to-source.md`. Agents never upgrade fidelity from style, quotation marks, an extension, tool name, hash, or confidence.
+
+Distillation records every Source's `capture_mode`. Drafts using `unknown`, `paraphrased`, or `reference-only` evidence include a non-empty `## Evidence limitations` section with the mode-specific workflow wording, even when stronger evidence is also cited.
 
 ## Safety properties
 
@@ -41,8 +45,8 @@ The corresponding discoverable skills are `$capture-vault-source`, `$triage-vaul
 - Sources are not rewritten during summarization.
 - Generated synthesis is distinguishable from reviewed knowledge.
 - Destructive actions require exact targets and explicit approval.
-- Asset intake never fetches URLs, overwrites binaries, or treats machine extraction as reviewed evidence; direct owner review is the default and advanced signed `source_review` is optional. Current Asset bytes are revalidated before distillation.
-- Every factual transformation preserves a path back to evidence.
+- Classified Source intake never fetches URLs, overwrites binaries, upgrades uncertain fidelity, or treats machine extraction as reviewed evidence; direct owner review is the default and advanced signed `source_review` is optional. Current Asset bytes and mechanical capture prerequisites are revalidated before distillation.
+- Every factual transformation preserves a path back to evidence; Source-backed transformations also preserve the declared capture boundary.
 - Broad “clean up my vault” requests begin with a read-only report.
 
 ## Agent handoff format

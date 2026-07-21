@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from html import unescape
 import hashlib
 import re
 import subprocess
@@ -50,6 +51,87 @@ SOURCE_URL_RE = re.compile(
     r"(?::[0-9]+)?(?:[/?#][^\s]*)?$",
     re.IGNORECASE,
 )
+
+LOW_FIDELITY_CAPTURE_MODES = frozenset(
+    {"unknown", "paraphrased", "reference-only"}
+)
+CAPTURE_METHODS = frozenset(
+    {
+        "asset",
+        "url-reference",
+        "web-clipper",
+        "manual-entry",
+        "file-extraction",
+        "ocr",
+        "transcription",
+        "import",
+        "mixed",
+    }
+)
+CAPTURE_MODES = frozenset(
+    {
+        "preserved-original",
+        "verbatim-excerpt",
+        "extracted",
+        "transcribed",
+        "paraphrased",
+        "firsthand-observation",
+        "reference-only",
+        "unknown",
+        "mixed",
+    }
+)
+CAPTURE_BOUNDARY_LABELS = (
+    "Capture method",
+    "Capture mode",
+    "Original evidence preserved",
+    "Verbatim material",
+    "Extracted or transcribed material",
+    "Paraphrased material",
+    "Unknown or unavailable evidence",
+)
+CONCRETE_BOUNDARY_LABELS = CAPTURE_BOUNDARY_LABELS[2:]
+LOCATOR_RE = re.compile(
+    r"(?P<passage>\S(?:.*\S)?)\s+(?:—|–|-)\s*"
+    r"(?:page|timestamp|frame|line|section|region)"
+    r"(?:\s+|:\s*)(?P<value>\S.*)$",
+    re.IGNORECASE,
+)
+TIMESTAMP_LOCATOR_RE = re.compile(
+    r"(?P<passage>\S(?:.*\S)?)\s+(?:—|–|-)\s*timestamp"
+    r"(?:\s+|:\s*)(?P<value>\S.*)$",
+    re.IGNORECASE,
+)
+COMMONMARK_RAW_TAG_RE = re.compile(
+    r"^<(?P<tag>script|pre|style|textarea)(?=[ \t>]|$)",
+    re.IGNORECASE,
+)
+COMMONMARK_BLOCK_TAG_RE = re.compile(
+    r"^</?(?:address|article|aside|base|basefont|blockquote|body|caption|center|"
+    r"col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|"
+    r"footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|"
+    r"link|main|menu|menuitem|nav|noframes|ol|optgroup|option|p|param|search|"
+    r"section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul)"
+    r"(?=[ \t]|/?>|$)",
+    re.IGNORECASE,
+)
+COMMONMARK_ATTRIBUTE_PATTERN = (
+    r"[A-Za-z_:][A-Za-z0-9_.:-]*"
+    r"(?:[ \t]*=[ \t]*(?:[^ \t\n\"'=<>`]+|'[^']*'|\"[^\"]*\"))?"
+)
+COMMONMARK_OPEN_TAG_PATTERN = (
+    r"<[A-Za-z][A-Za-z0-9-]*"
+    rf"(?:[ \t]+{COMMONMARK_ATTRIBUTE_PATTERN})*[ \t]*/?>"
+)
+COMMONMARK_CLOSE_TAG_PATTERN = r"</[A-Za-z][A-Za-z0-9-]*[ \t]*>"
+COMMONMARK_COMPLETE_TAG_RE = re.compile(
+    rf"^(?:{COMMONMARK_OPEN_TAG_PATTERN}|{COMMONMARK_CLOSE_TAG_PATTERN})[ \t]*$"
+)
+INLINE_HTML_TAG_RE = re.compile(
+    rf"(?:{COMMONMARK_OPEN_TAG_PATTERN}|{COMMONMARK_CLOSE_TAG_PATTERN})"
+)
+INLINE_HTML_COMMENT_RE = re.compile(r"<!--.*?(?:-->|$)", re.DOTALL)
+
 
 
 def relative(path: Path) -> str:
@@ -143,6 +225,476 @@ def markdown_without_fenced_code(text: str) -> str:
         masked.append(newline)
 
     return "".join(masked)
+
+
+ATX_HEADING_RE = re.compile(r"^ {0,3}#{1,6}(?:[ \t]+|$)")
+SETEXT_HEADING_RE = re.compile(r"^ {0,3}(?:=+|-+)[ \t]*$")
+THEMATIC_BREAK_RE = re.compile(
+    r"^ {0,3}(?:(?:\*[ \t]*){3,}|(?:-[ \t]*){3,}|(?:_[ \t]*){3,})$"
+)
+MARKDOWN_LIST_MARKER_RE = re.compile(
+    r"^ {0,3}(?:[-+*]|\d{1,9}[.)])(?:[ \t]+(?P<content>.*)|[ \t]*$)"
+)
+MARKDOWN_LIST_CONTAINER_RE = re.compile(
+    r"^(?P<indent> {0,3})(?P<marker>[-+*]|\d{1,9}[.)])"
+    r"(?P<spaces>[ \t]+)(?P<content>.*)$"
+)
+
+
+def markdown_paragraph_open_after(line: str, was_open: bool) -> bool:
+    """Return whether CommonMark leaves a paragraph open after this line."""
+    if not line.strip() or ATX_HEADING_RE.match(line) or THEMATIC_BREAK_RE.fullmatch(line):
+        return False
+    if was_open and SETEXT_HEADING_RE.fullmatch(line):
+        return False
+    if marker := MARKDOWN_LIST_MARKER_RE.match(line):
+        return bool(marker.group("content") and marker.group("content").strip())
+    if quote := re.match(r"^ {0,3}>\s?(.*)$", line):
+        return markdown_paragraph_open_after(quote.group(1), False)
+    if not was_open and re.match(r"^(?: {4}|\t)", line):
+        return False
+    return True
+
+
+def markdown_container_content(
+    line: str, container_indent: int, paragraph_open: bool
+) -> tuple[str, int]:
+    """Return line content relative to an active CommonMark list container."""
+    line = line.expandtabs(4)
+    physical_indent = len(line) - len(line.lstrip(" "))
+    if container_indent and physical_indent >= container_indent:
+        relative = line[container_indent:]
+    else:
+        if (
+            container_indent
+            and physical_indent < container_indent
+            and (
+                MARKDOWN_LIST_MARKER_RE.match(line)
+                or (
+                    line.strip()
+                    and not (
+                        paragraph_open
+                        and markdown_paragraph_open_after(line, True)
+                    )
+                )
+            )
+        ):
+            container_indent = 0
+        relative = line
+
+    quote_prefix = False
+    while quote := re.match(r"^ {0,3}>\s?(.*)$", relative):
+        quote_prefix = True
+        relative = quote.group(1)
+
+    if marker := MARKDOWN_LIST_CONTAINER_RE.match(relative):
+        spaces = marker.group("spaces")
+        content = marker.group("content")
+        marker_text = marker.group("marker")
+        if paragraph_open and (
+            not content.strip()
+            or (marker_text[0].isdigit() and int(marker_text[:-1]) != 1)
+        ):
+            return relative, container_indent
+        padding = len(spaces) if len(spaces) <= 4 and content.strip() else 1
+        content_offset = (
+            len(marker.group("indent")) + len(marker.group("marker")) + padding
+        )
+        if not quote_prefix:
+            container_indent += content_offset
+        relative = relative[content_offset:]
+
+    return relative, container_indent
+
+
+def markdown_without_hidden_blocks(text: str) -> str:
+    """Mask fenced code and CommonMark raw HTML while preserving newlines."""
+    masked: list[str] = []
+    fence_character: str | None = None
+    fence_length = 0
+    html_end_re: re.Pattern[str] | None = None
+    html_until_blank = False
+    paragraph_open = False
+    container_indent = 0
+    fence_opening_re = re.compile(r"^ {0,3}(?P<fence>`{3,}|~{3,})")
+    for line in text.splitlines(keepends=True):
+        content = line.rstrip("\r\n")
+        newline = line[len(content) :]
+        structural, container_indent = markdown_container_content(
+            content, container_indent, paragraph_open
+        )
+        if html_end_re is not None:
+            masked.append(newline)
+            if html_end_re.search(structural):
+                html_end_re = None
+            continue
+        if html_until_blank:
+            masked.append(newline)
+            if not content.strip():
+                html_until_blank = False
+            continue
+        if fence_character is not None:
+            closing_re = re.compile(
+                rf"^ {{0,3}}{re.escape(fence_character)}"
+                rf"{{{fence_length},}}[ \t]*$"
+            )
+            if closing_re.fullmatch(structural):
+                fence_character = None
+                fence_length = 0
+            masked.append(newline)
+            continue
+
+        indent = len(structural) - len(structural.lstrip(" "))
+        stripped = structural[indent:] if indent <= 3 else ""
+        raw_tag = COMMONMARK_RAW_TAG_RE.match(stripped)
+        if raw_tag:
+            html_end_re = re.compile(
+                rf"</{re.escape(raw_tag.group('tag'))}\s*>",
+                re.IGNORECASE,
+            )
+        elif stripped.startswith("<!--"):
+            html_end_re = re.compile(r"-->")
+        elif stripped.startswith("<?"):
+            html_end_re = re.compile(r"\?>")
+        elif stripped.startswith("<![CDATA["):
+            html_end_re = re.compile(r"\]\]>")
+        elif (
+            len(stripped) > 2
+            and stripped.startswith("<!")
+            and "A" <= stripped[2] <= "Z"
+        ):
+            html_end_re = re.compile(r">")
+        elif COMMONMARK_BLOCK_TAG_RE.match(stripped):
+            html_until_blank = True
+        elif (
+            COMMONMARK_COMPLETE_TAG_RE.fullmatch(stripped)
+            and not paragraph_open
+        ):
+            html_until_blank = True
+        else:
+            fence = fence_opening_re.match(structural)
+            if fence and not (
+                fence.group("fence").startswith("`")
+                and "`" in structural[fence.end() :]
+            ):
+                marker = fence.group("fence")
+                fence_character = marker[0]
+                paragraph_open = False
+                fence_length = len(marker)
+                masked.append(newline)
+            else:
+                masked.append(line)
+                paragraph_open = markdown_paragraph_open_after(
+                    structural, paragraph_open
+                )
+            continue
+
+        paragraph_open = False
+        masked.append(newline)
+        if html_end_re is not None and html_end_re.search(stripped):
+            html_end_re = None
+
+    return "".join(masked)
+
+def markdown_section_lines(text: str, heading: str) -> list[str]:
+    """Return visible body lines beneath an exact level-two Markdown heading."""
+    frontmatter = FRONTMATTER_RE.match(text)
+    if frontmatter:
+        text = text[frontmatter.end() :]
+    visible = markdown_without_hidden_blocks(text)
+    lines = visible.splitlines()
+    heading_re = re.compile(rf"^ {{0,3}}## {re.escape(heading)}[ \t]*$")
+    start: int | None = None
+    for index, line in enumerate(lines):
+        if heading_re.fullmatch(line):
+            start = index + 1
+            break
+    if start is None:
+        return []
+    section: list[str] = []
+    for line in lines[start:]:
+        if re.match(r"^ {0,3}#{1,2}(?:\s|$)", line):
+            break
+        section.append(line)
+    return section
+
+
+def markdown_list_items(lines: list[str]) -> list[str]:
+    """Return CommonMark list items with visible paragraph continuations joined."""
+    items: list[str] = []
+    current: list[str] = []
+    in_item = False
+    outside_paragraph_open = False
+    item_indent = 0
+    blank_after_item = False
+    fence_character: str | None = None
+    fence_length = 0
+    in_indented_code = False
+    previous_quote_depth = 0
+    item_paragraph_open = False
+    item_paragraph_quote_depth = 0
+
+    def flush() -> None:
+        if current:
+            items.append(" ".join(current).strip())
+            current.clear()
+
+    for raw_line in lines:
+        line = raw_line.expandtabs(4)
+        quote_depth = 0
+        while quote := re.match(r"^ {0,3}>\s?(.*)$", line):
+            quote_depth += 1
+            line = quote.group(1)
+        if not in_item and quote_depth > previous_quote_depth:
+            outside_paragraph_open = False
+        previous_quote_depth = quote_depth
+        stripped = line.lstrip(" ")
+        indent = len(line) - len(stripped)
+        relative = line[item_indent:] if in_item and indent >= item_indent else line
+
+        if fence_character is not None:
+            if re.fullmatch(
+                rf" {{0,3}}{re.escape(fence_character)}"
+                rf"{{{fence_length},}}[ \t]*",
+                relative,
+            ):
+                fence_character = None
+                fence_length = 0
+            continue
+
+        if match := MARKDOWN_LIST_CONTAINER_RE.match(line):
+            marker_text = match.group("marker")
+            marker_content = match.group("content")
+            if (
+                in_item
+                and item_paragraph_open
+                and quote_depth <= item_paragraph_quote_depth
+                and indent >= item_indent
+                and not blank_after_item
+                and (
+                    not marker_content.strip()
+                    or (
+                        marker_text[0].isdigit()
+                        and int(marker_text[:-1]) != 1
+                    )
+                )
+            ):
+                current.append(line[item_indent:].strip())
+                item_paragraph_quote_depth = quote_depth
+                continue
+            if not in_item and outside_paragraph_open and (
+                not marker_content.strip()
+                or (
+                    marker_text[0].isdigit()
+                    and int(marker_text[:-1]) != 1
+                )
+            ):
+                outside_paragraph_open = markdown_paragraph_open_after(
+                    line, outside_paragraph_open
+                )
+                continue
+            flush()
+            in_item = True
+            spaces = match.group("spaces")
+            marker_width = len(match.group("indent")) + len(match.group("marker"))
+            padding = (
+                len(spaces)
+                if len(spaces) <= 4 and match.group("content").strip()
+                else 1
+            )
+            item_indent = marker_width + padding
+            content = line[item_indent:]
+            content_indent = len(content) - len(content.lstrip(" "))
+            if content.strip() and content_indent < 4:
+                current.append(content.strip())
+            item_paragraph_open = bool(
+                content.strip()
+                and content_indent < 4
+                and markdown_paragraph_open_after(content.strip(), False)
+            )
+            item_paragraph_quote_depth = quote_depth
+            blank_after_item = False
+            in_indented_code = bool(content.strip() and content_indent >= 4)
+            outside_paragraph_open = False
+            continue
+        if not line.strip():
+            if in_item:
+                blank_after_item = True
+                item_paragraph_open = False
+            else:
+                outside_paragraph_open = False
+            continue
+        if not in_item:
+            outside_paragraph_open = markdown_paragraph_open_after(
+                line, outside_paragraph_open
+            )
+            continue
+
+        relative = line[item_indent:] if indent >= item_indent else line
+        relative_indent = len(relative) - len(relative.lstrip(" "))
+        if (fence := re.match(r"^ {0,3}(?P<marker>`{3,}|~{3,})", relative)) and not (
+            fence.group("marker").startswith("`")
+            and "`" in relative[fence.end() :]
+        ):
+            marker = fence.group("marker")
+            fence_character = marker[0]
+            fence_length = len(marker)
+            item_paragraph_open = False
+            continue
+        if in_indented_code:
+            if indent >= item_indent and relative_indent >= 4:
+                item_paragraph_open = False
+                continue
+            in_indented_code = False
+        if indent >= item_indent:
+            if blank_after_item and relative_indent >= 4:
+                in_indented_code = True
+                item_paragraph_open = False
+                continue
+            current.append(relative.strip())
+            item_paragraph_open = markdown_paragraph_open_after(
+                relative,
+                item_paragraph_open
+                and quote_depth == item_paragraph_quote_depth,
+            )
+            item_paragraph_quote_depth = quote_depth
+            blank_after_item = False
+            continue
+        if (
+            item_paragraph_open
+            and not blank_after_item
+            and quote_depth <= item_paragraph_quote_depth
+            and not MARKDOWN_LIST_MARKER_RE.match(line)
+            and markdown_paragraph_open_after(line, item_paragraph_open)
+        ):
+            current.append(line.strip())
+            item_paragraph_open = True
+            item_paragraph_quote_depth = quote_depth
+            continue
+        flush()
+        in_item = False
+        item_indent = 0
+        blank_after_item = False
+        in_indented_code = False
+        item_paragraph_open = False
+        outside_paragraph_open = markdown_paragraph_open_after(line, False)
+
+    flush()
+    return items
+
+
+def markdown_without_inline_comments(value: str) -> str:
+    return INLINE_HTML_COMMENT_RE.sub("", value)
+
+
+def visible_markdown_text(value: str) -> str:
+    content = markdown_without_inline_comments(value)
+    content = INLINE_HTML_TAG_RE.sub("", content)
+    content = re.sub(r"!?\[([^\]]*)\]\([^)]*\)", r"\1", content)
+    content = re.sub(r"!?\[([^\]]*)\]\[[^\]]*\]", r"\1", content)
+    content = re.sub(r"[`*_~]", "", unescape(content))
+    return content
+
+
+def placeholder_value(value: str) -> bool:
+    stripped = visible_markdown_text(value).strip()
+    return bool(
+        not stripped
+        or stripped.casefold() in {"none", "n/a"}
+        or re.fullmatch(r"<!--.*?-->", stripped, re.DOTALL)
+        or re.fullmatch(r"\{\{.*?\}\}", stripped, re.DOTALL)
+        or re.fullmatch(r"<[^<>]+>", stripped, re.DOTALL)
+    )
+
+def concrete_locator(pattern: re.Pattern[str], value: str) -> bool:
+    match = pattern.search(markdown_without_inline_comments(value))
+    if not match:
+        return False
+    passage = visible_markdown_text(match.group("passage"))
+    locator = visible_markdown_text(match.group("value"))
+    return bool(
+        not placeholder_value(passage)
+        and any(character.isalnum() for character in passage)
+        and not placeholder_value(locator)
+    )
+
+
+def substantive_section_line(line: str) -> bool:
+    if re.match(r"^(?: {4}|\t)", line):
+        return False
+    content = line
+    container_re = re.compile(
+        r"^\s*(?:>\s?|(?:[-*+]|\d+[.)])(?:\s+|$)|\[[ xX]\](?:\s+|$))"
+    )
+    while True:
+        marker = MARKDOWN_LIST_CONTAINER_RE.match(content)
+        if (
+            marker
+            and len(marker.group("spaces")) > 4
+            and marker.group("content").strip()
+        ):
+            return False
+        unwrapped = container_re.sub("", content, count=1)
+        if unwrapped == content:
+            break
+        content = unwrapped
+    content = content.strip()
+    if re.match(r"^#{1,6}(?:\s|$)", content):
+        return False
+    if re.fullmatch(r"(?:\*\s*){3,}|(?:-\s*){3,}|(?:_\s*){3,}", content):
+        return False
+    return any(character.isalnum() for character in visible_markdown_text(content))
+
+
+def substantive_section(lines: list[str]) -> bool:
+    return any(
+        substantive_section_line(item) for item in markdown_list_items(lines)
+    ) or any(substantive_section_line(line) for line in lines)
+
+
+def capture_boundary_values(text: str) -> dict[str, str]:
+    values: dict[str, str] = {}
+    for item in markdown_list_items(
+        markdown_section_lines(text, "Capture boundary")
+    ):
+        match = re.match(r"^([^:]+):\s*(.*)$", item)
+        if match and match.group(1) in CAPTURE_BOUNDARY_LABELS:
+            values[match.group(1)] = match.group(2).strip()
+    return values
+
+
+def key_passage_items(text: str) -> list[str]:
+    return [
+        item
+        for item in markdown_list_items(markdown_section_lines(text, "Key passages"))
+        if not placeholder_value(item)
+    ]
+
+
+def quoted_item(value: str) -> bool:
+    visible = visible_markdown_text(value)
+    return bool(
+        re.search(r'"[^"\n]+"', visible)
+        or re.search(r"“[^”\n]+”", visible)
+    )
+
+
+def source_assets(metadata: dict[str, Any]) -> list[dict[str, Any]]:
+    assets = metadata.get("assets")
+    if not isinstance(assets, list):
+        return []
+    return [asset for asset in assets if isinstance(asset, dict)]
+
+
+def has_audio_video_provenance(metadata: dict[str, Any]) -> bool:
+    for asset in source_assets(metadata):
+        media_type = asset.get("media_type")
+        if isinstance(media_type, str) and media_type.startswith(("audio/", "video/")):
+            return True
+    return bool(
+        valid_source_url(metadata.get("source_url"))
+        and metadata.get("source_type") in {"video", "podcast"}
+    )
 
 
 def managed_notes() -> list[Path]:
@@ -288,6 +840,147 @@ def source_provenance_errors(metadata: dict[str, Any]) -> list[str]:
     return errors
 
 
+
+
+def source_capture_fidelity_errors(
+    path: Path, metadata: dict[str, Any], text: str
+) -> list[str]:
+    del path
+    errors: list[str] = []
+    missing = sorted(
+        field
+        for field in ("capture_method", "capture_mode")
+        if field not in metadata
+    )
+    if missing:
+        errors.append(
+            "Source missing required capture classification field(s): "
+            f"{', '.join(missing)}; classify manually (no value was inferred)"
+        )
+        return errors
+
+    method = metadata.get("capture_method")
+    mode = metadata.get("capture_mode")
+    if method not in CAPTURE_METHODS or mode not in CAPTURE_MODES:
+        return errors
+
+    assets = source_assets(metadata)
+    has_asset = bool(assets)
+    has_primary_asset = any(asset.get("role") == "primary" for asset in assets)
+    has_extracted_asset = any(
+        asset.get("extraction_status") in {"extracted", "partial"}
+        for asset in assets
+    )
+    boundary = capture_boundary_values(text)
+    extracted_boundary = boundary.get("Extracted or transcribed material", "")
+    paraphrased_boundary = boundary.get("Paraphrased material", "")
+    requires_boundary = (
+        method in {"file-extraction", "ocr", "transcription", "mixed"}
+        or mode in {"extracted", "transcribed", "paraphrased", "mixed"}
+    )
+    if requires_boundary and not all(
+        label in boundary for label in CAPTURE_BOUNDARY_LABELS
+    ):
+        errors.append(
+            "capture classification requires all exact Capture Boundary labels"
+        )
+    concrete_boundaries = [
+        label
+        for label in CONCRETE_BOUNDARY_LABELS
+        if label in boundary and not placeholder_value(boundary[label])
+    ]
+    passages = key_passage_items(text)
+
+    if method == "asset" and not has_asset:
+        errors.append("capture_method 'asset' requires a declared Asset")
+    if method == "url-reference" and not valid_source_url(metadata.get("source_url")):
+        errors.append("capture_method 'url-reference' requires a valid source_url")
+    if method in {"file-extraction", "ocr"}:
+        if not has_extracted_asset:
+            errors.append(
+                f"capture_method '{method}' requires an extracted or partial Asset"
+            )
+        if placeholder_value(extracted_boundary):
+            errors.append(
+                f"capture_method '{method}' requires a non-empty "
+                "Extracted or transcribed material Capture Boundary entry"
+            )
+    if method == "transcription":
+        if not has_audio_video_provenance(metadata):
+            errors.append(
+                "capture_method 'transcription' requires audio/video provenance"
+            )
+        if placeholder_value(extracted_boundary):
+            errors.append(
+                "capture_method 'transcription' requires a non-empty "
+                "Extracted or transcribed material Capture Boundary entry"
+            )
+    if method == "mixed" and len(concrete_boundaries) < 2:
+        errors.append(
+            "capture_method 'mixed' requires at least two concrete Capture Boundary entries"
+        )
+
+    if mode == "preserved-original" and not has_primary_asset:
+        errors.append(
+            "capture_mode 'preserved-original' requires a primary Asset"
+        )
+    if mode == "reference-only" and not valid_source_url(metadata.get("source_url")):
+        errors.append("capture_mode 'reference-only' requires a valid source_url")
+    if mode == "verbatim-excerpt" and not any(
+        concrete_locator(LOCATOR_RE, item) for item in passages
+    ):
+        errors.append(
+            "capture_mode 'verbatim-excerpt' requires an exact Key passages locator"
+        )
+    if mode == "extracted":
+        if not has_extracted_asset:
+            errors.append(
+                "capture_mode 'extracted' requires an extracted or partial Asset"
+            )
+        if placeholder_value(extracted_boundary):
+            errors.append(
+                "capture_mode 'extracted' requires a non-empty "
+                "Extracted or transcribed material Capture Boundary entry"
+            )
+    if mode == "transcribed":
+        if not has_audio_video_provenance(metadata):
+            errors.append("capture_mode 'transcribed' requires audio/video provenance")
+        if placeholder_value(extracted_boundary):
+            errors.append(
+                "capture_mode 'transcribed' requires a non-empty "
+                "Extracted or transcribed material Capture Boundary entry"
+            )
+        if any(
+            quoted_item(item)
+            and not concrete_locator(TIMESTAMP_LOCATOR_RE, item)
+            for item in passages
+        ):
+            errors.append(
+                "quoted transcribed Key passages require a timestamp locator"
+            )
+    if (
+        mode == "firsthand-observation"
+        and metadata.get("source_type") != "personal-observation"
+    ):
+        errors.append(
+            "capture_mode 'firsthand-observation' requires "
+            "source_type 'personal-observation'"
+        )
+    if mode == "paraphrased":
+        if placeholder_value(paraphrased_boundary):
+            errors.append(
+                "capture_mode 'paraphrased' requires a non-empty "
+                "Paraphrased material Capture Boundary entry"
+            )
+        if any(quoted_item(item) for item in passages):
+            errors.append(
+                "capture_mode 'paraphrased' must not use quoted Key passages"
+            )
+    if mode == "mixed" and len(concrete_boundaries) < 2:
+        errors.append(
+            "capture_mode 'mixed' requires at least two concrete Capture Boundary entries"
+        )
+    return errors
 
 
 def asset_metadata_errors(notes: list[Path]) -> list[str]:
@@ -465,6 +1158,11 @@ def schema_errors(notes: list[Path]) -> list[str]:
                 f"{relative(path)}: {error}"
                 for error in source_provenance_errors(metadata)
             )
+            text = path.read_text(encoding="utf-8")
+            errors.extend(
+                f"{relative(path)}: {error}"
+                for error in source_capture_fidelity_errors(path, metadata, text)
+            )
 
 
         if metadata.get("type") == "daily" and metadata.get("date") != path.stem:
@@ -551,6 +1249,90 @@ def schema_errors(notes: list[Path]) -> list[str]:
                 errors.append(f"{relative(path)}: human block markers are reversed")
 
     return errors
+
+
+def concept_capture_fidelity_warnings(notes: list[Path]) -> list[str]:
+    warnings: list[str] = []
+    for path in notes:
+        metadata, parse_error = load_frontmatter(path)
+        if (
+            parse_error
+            or metadata is None
+            or metadata.get("type") != "concept"
+            or metadata.get("status") not in {"draft", "evergreen"}
+        ):
+            continue
+
+        evidence = metadata.get("sources")
+        if not isinstance(evidence, list):
+            continue
+        modes: set[str] = set()
+        all_sources = bool(evidence)
+        all_sources_low = bool(evidence)
+        skip_warning = False
+        for source in evidence:
+            if not isinstance(source, str):
+                skip_warning = True
+                break
+            match = re.fullmatch(r"\[\[([^\[\]]+)\]\]", source)
+            if not match:
+                skip_warning = True
+                break
+            target = normalize_target(match.group(1))
+            if target.startswith("Daily/"):
+                daily_path = ROOT / f"{target}.md"
+                if not daily_path.is_file():
+                    skip_warning = True
+                    break
+                all_sources = False
+                all_sources_low = False
+                continue
+            if not target.startswith("Sources/"):
+                skip_warning = True
+                break
+            target_path = ROOT / f"{target}.md"
+            if not target_path.is_file():
+                skip_warning = True
+                break
+            source_metadata, source_error = load_frontmatter(target_path)
+            if source_error or source_metadata is None:
+                skip_warning = True
+                break
+            capture_mode = source_metadata.get("capture_mode")
+            if not isinstance(capture_mode, str):
+                skip_warning = True
+                break
+            if capture_mode in LOW_FIDELITY_CAPTURE_MODES:
+                modes.add(capture_mode)
+            else:
+                all_sources_low = False
+
+        if skip_warning or not modes:
+            continue
+        limitation_lines = markdown_section_lines(
+            path.read_text(encoding="utf-8"), "Evidence limitations"
+        )
+        limitation_text = markdown_without_inline_comments(
+            "\n".join(limitation_lines)
+        )
+        if substantive_section(limitation_text.splitlines()):
+            continue
+        if (
+            metadata.get("status") == "evergreen"
+            and all_sources
+            and all_sources_low
+        ):
+            warnings.append(
+                f"{relative(path)}: evergreen Concept relies exclusively on unknown, "
+                "paraphrased, or reference-only Sources; review and retain an "
+                "Evidence limitations section"
+            )
+        else:
+            warnings.append(
+                f"{relative(path)}: Concept cites {', '.join(sorted(modes))} Source "
+                "evidence; add and review an Evidence limitations section"
+            )
+    return warnings
 
 
 def normalize_asset_target(raw: str) -> str:
@@ -788,11 +1570,19 @@ def main() -> int:
     errors.extend(repository_hygiene_errors())
     errors.extend(codex_agent_errors())
     errors.extend(skill_errors())
+    warnings = concept_capture_fidelity_warnings(notes)
 
     if errors:
         print(f"Vault validation failed with {len(errors)} error(s):")
         for error in sorted(set(errors)):
             print(f"- {error}")
+
+    if warnings:
+        print("Vault validation warning(s):")
+        for warning in sorted(set(warnings)):
+            print(f"- {warning}")
+
+    if errors:
         return 1
 
     print(

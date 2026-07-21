@@ -7,6 +7,8 @@ updated: {{date}}
 tags: []
 aliases: []
 source_type: other
+capture_method: manual-entry
+capture_mode: unknown
 source_url: ""
 inbox_source: null
 author: ""
@@ -27,6 +29,16 @@ assets: []
 - Rights or sharing constraints:
 
 Every Source needs an absolute HTTP(S) URL, a verified local Asset binding, or an existing Inbox provenance link.
+
+## Capture boundary
+
+- Capture method:
+- Capture mode:
+- Original evidence preserved:
+- Verbatim material:
+- Extracted or transcribed material:
+- Paraphrased material:
+- Unknown or unavailable evidence:
 
 ## Assets
 
@@ -59,7 +71,7 @@ Summarize the source without adding conclusions that are not present.
 
 ## Key passages
 
-Use only short quotations when necessary and record page, timestamp, frame, or region locations.
+Use only short quotations when necessary and record page, timestamp, frame, line, section, or region locations.
 
 ## Amendments
 
@@ -71,7 +83,14 @@ Append dated corrections here rather than silently rewriting the record.
 - [ ] Asset path or original URL verified
 - [ ] Rights or sharing constraints recorded
 - [ ] Extraction is faithful and machine-assisted text is labeled
-- [ ] Important claims have page, timestamp, frame, or region locators
+- [ ] Important claims have page, timestamp, frame, line, section, or region locators
+- [ ] Capture method accurately describes how the content entered the vault
+- [ ] Capture mode is supported by available evidence
+- [ ] Original evidence availability is recorded
+- [ ] Verbatim passages have exact locators
+- [ ] Extracted or transcribed material is clearly labeled
+- [ ] Paraphrased material is distinguished from evidence
+- [ ] Unknown fidelity remains explicitly marked
 - [ ] Source is ready for human review
 
 After the owner verifies every checklist item, the successful direct-review transition is:

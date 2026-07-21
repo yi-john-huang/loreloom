@@ -87,12 +87,14 @@ CAPTURE_BOUNDARY_LABELS = (
 )
 CONCRETE_BOUNDARY_LABELS = CAPTURE_BOUNDARY_LABELS[2:]
 LOCATOR_RE = re.compile(
-    r"(?:—|–|-)\s*(?:page|timestamp|frame|line|section|region)"
-    r"(?:\s+|:\s*)\S.*$",
+    r"(?:^|\s)(?:—|–|-)\s*(?:page|timestamp|frame|line|section|region)"
+    r"(?:\s+|:\s*)(?P<value>\S.*)$",
     re.IGNORECASE,
 )
 TIMESTAMP_LOCATOR_RE = re.compile(
-    r"(?:—|–|-)\s*timestamp(?:\s+|:\s*)\S.*$", re.IGNORECASE
+    r"(?:^|\s)(?:—|–|-)\s*timestamp"
+    r"(?:\s+|:\s*)(?P<value>\S.*)$",
+    re.IGNORECASE,
 )
 
 
@@ -1066,10 +1068,21 @@ def markdown_without_fenced_code(text: str) -> str:
 
 
 def markdown_section_lines(text: str, heading: str) -> list[str]:
-    lines = markdown_without_fenced_code(text).splitlines()
+    frontmatter = FRONTMATTER_RE.match(text)
+    if frontmatter:
+        text = text[frontmatter.end() :]
+    visible = markdown_without_fenced_code(text)
+    visible = re.sub(
+        r"<!--.*?(?:-->|$)",
+        lambda match: re.sub(r"[^\r\n]", "", match.group(0)),
+        visible,
+        flags=re.DOTALL,
+    )
+    lines = visible.splitlines()
+    heading_re = re.compile(rf"^ {{0,3}}## {re.escape(heading)}[ \t]*$")
     start: int | None = None
     for index, line in enumerate(lines):
-        if line.strip() == f"## {heading}":
+        if heading_re.fullmatch(line):
             start = index + 1
             break
     if start is None:
@@ -1092,11 +1105,15 @@ def placeholder_value(value: str) -> bool:
         or re.fullmatch(r"<[^<>]+>", stripped, re.DOTALL)
     )
 
+def concrete_locator(pattern: re.Pattern[str], value: str) -> bool:
+    match = pattern.search(value)
+    return bool(match and not placeholder_value(match.group("value")))
+
 
 def capture_boundary_values(text: str) -> dict[str, str]:
     values: dict[str, str] = {}
     for line in markdown_section_lines(text, "Capture boundary"):
-        match = re.match(r"^\s*-\s+([^:]+):\s*(.*)$", line)
+        match = re.match(r"^ {0,3}-\s+([^:]+):\s*(.*)$", line)
         if match and match.group(1) in CAPTURE_BOUNDARY_LABELS:
             values[match.group(1)] = match.group(2).strip()
     return values
@@ -1106,7 +1123,7 @@ def key_passage_items(text: str) -> list[str]:
     return [
         match.group(1).strip()
         for line in markdown_section_lines(text, "Key passages")
-        if (match := re.match(r"^\s*-\s+(.*)$", line))
+        if (match := re.match(r"^ {0,3}-\s+(.*)$", line))
         and not placeholder_value(match.group(1))
     ]
 
@@ -1293,7 +1310,7 @@ def source_capture_fidelity_errors(
     if mode == "reference-only" and not valid_source_url(metadata.get("source_url")):
         errors.append("capture_mode 'reference-only' requires a valid source_url")
     if mode == "verbatim-excerpt" and not any(
-        LOCATOR_RE.search(item) for item in passages
+        concrete_locator(LOCATOR_RE, item) for item in passages
     ):
         errors.append(
             "capture_mode 'verbatim-excerpt' requires an exact Key passages locator"
@@ -1317,7 +1334,8 @@ def source_capture_fidelity_errors(
                 "Extracted or transcribed material Capture Boundary entry"
             )
         if any(
-            quoted_item(item) and not TIMESTAMP_LOCATOR_RE.search(item)
+            quoted_item(item)
+            and not concrete_locator(TIMESTAMP_LOCATOR_RE, item)
             for item in passages
         ):
             errors.append(

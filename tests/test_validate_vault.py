@@ -949,6 +949,74 @@ class CaptureFidelityValidationTests(unittest.TestCase):
                 errors = self.fidelity_errors(metadata, body)
                 self.assertTrue(any(expected in error for error in errors), errors)
 
+    def test_hidden_sections_and_placeholder_locators_fail_closed(self) -> None:
+        cases = (
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "---\nnotes: |\n  ## Key passages\n  - “Fake.” — page 1\n---\n",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "    ## Key passages\n\n    - “Fake.” — page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n    - “Fake.” — page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "<!--\n## Key passages\n- “Fake.” — page 1\n-->",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n- “Fake.” fake-page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n- “Fake.” — page <page>",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata(
+                    "transcription",
+                    "transcribed",
+                    source_type="video",
+                ),
+                self.boundary(
+                    **{"Extracted or transcribed material": "Typed transcript."}
+                )
+                + "\n\n## Key passages\n\n"
+                '- “Fake.” — timestamp {{timestamp}}',
+                "require a timestamp locator",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                self.boundary().replace(
+                    "- Paraphrased material: None",
+                    "- Paraphrased material: <!--\n"
+                    "  add a substantive explanation\n"
+                    "  -->",
+                ),
+                "requires a non-empty Paraphrased material",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                self.boundary(
+                    **{"Paraphrased material": "Owner-declared summary."}
+                ).replace("\n-", "\n    -"),
+                "requires all exact Capture Boundary labels",
+            ),
+        )
+        for metadata, body, expected in cases:
+            with self.subTest(body=body):
+                errors = self.fidelity_errors(metadata, body)
+                self.assertTrue(any(expected in error for error in errors), errors)
+
     def test_missing_fields_and_invalid_enums_are_reported(self) -> None:
         metadata = self.metadata("manual-entry", "unknown")
         del metadata["capture_method"]
@@ -1037,6 +1105,45 @@ sources:
 
 # claim
 {limitation_section}"""
+
+    def test_placeholder_limitations_do_not_suppress_warnings(self) -> None:
+        weak = self.write(
+            "Sources/weak.md", self.reviewed_source("unknown", "weak")
+        )
+        draft = self.write(
+            "Knowledge/claim.md",
+            self.concept("draft", ["[[Sources/weak]]"]),
+        )
+        contents = (
+            self.concept("draft", ["[[Sources/weak]]"], "-"),
+            self.concept(
+                "draft",
+                ["[[Sources/weak]]"],
+                "- <!-- limitation -->",
+            ),
+            self.concept(
+                "draft",
+                ["[[Sources/weak]]"],
+                "    Hidden in an indented code block.",
+            ),
+            self.concept("draft", ["[[Sources/weak]]"]).replace(
+                "sources:\n",
+                "notes: |\n"
+                "  ## Evidence limitations\n"
+                "  - Hidden in frontmatter.\n"
+                "sources:\n",
+            ),
+        )
+        for content in contents:
+            with self.subTest(content=content):
+                draft.write_text(content, encoding="utf-8")
+                warnings = validate_vault.concept_capture_fidelity_warnings(
+                    [weak, draft]
+                )
+                self.assertTrue(
+                    any("Concept cites unknown" in warning for warning in warnings),
+                    warnings,
+                )
 
     def test_low_fidelity_concept_warnings_and_suppression(self) -> None:
         weak = self.write(

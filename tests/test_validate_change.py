@@ -1997,6 +1997,74 @@ class CaptureFidelityContractTests(unittest.TestCase):
                 errors = self.errors(metadata, body)
                 self.assertTrue(any(expected in error for error in errors), errors)
 
+    def test_hidden_sections_and_placeholder_locators_fail_closed(self) -> None:
+        cases = (
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "---\nnotes: |\n  ## Key passages\n  - “Fake.” — page 1\n---\n",
+                "exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "    ## Key passages\n\n    - “Fake.” — page 1",
+                "exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n    - “Fake.” — page 1",
+                "exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "<!--\n## Key passages\n- “Fake.” — page 1\n-->",
+                "exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n- “Fake.” fake-page 1",
+                "exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n- “Fake.” — page <page>",
+                "exact Key passages locator",
+            ),
+            (
+                self.metadata(
+                    "transcription",
+                    "transcribed",
+                    source_type="video",
+                ),
+                self.boundary(
+                    **{"Extracted or transcribed material": "Typed transcript."}
+                )
+                + "\n\n## Key passages\n\n"
+                '- “Fake.” — timestamp {{timestamp}}',
+                "timestamp locator",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                self.boundary().replace(
+                    "- Paraphrased material: None",
+                    "- Paraphrased material: <!--\n"
+                    "  add a substantive explanation\n"
+                    "  -->",
+                ),
+                "non-empty Paraphrased material",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                self.boundary(
+                    **{"Paraphrased material": "Owner-declared summary."}
+                ).replace("\n-", "\n    -"),
+                "requires all exact Capture Boundary labels",
+            ),
+        )
+        for metadata, body, expected in cases:
+            with self.subTest(body=body):
+                errors = self.errors(metadata, body)
+                self.assertTrue(any(expected in error for error in errors), errors)
+
     def test_missing_fields_and_invalid_enums_fail_contract(self) -> None:
         metadata = self.metadata("manual-entry", "unknown")
         del metadata["capture_method"]

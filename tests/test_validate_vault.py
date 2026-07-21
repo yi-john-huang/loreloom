@@ -992,6 +992,16 @@ class CaptureFidelityValidationTests(unittest.TestCase):
                 "requires an exact Key passages locator",
             ),
             (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n- — — page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n- ... — page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
                 self.metadata(
                     "transcription",
                     "transcribed",

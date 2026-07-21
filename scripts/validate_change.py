@@ -1111,6 +1111,7 @@ def concrete_locator(pattern: re.Pattern[str], value: str) -> bool:
     return bool(
         match
         and not placeholder_value(match.group("passage"))
+        and any(character.isalnum() for character in match.group("passage"))
         and not placeholder_value(match.group("value"))
     )
 

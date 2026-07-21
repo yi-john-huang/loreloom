@@ -821,6 +821,14 @@ class CaptureFidelityValidationTests(unittest.TestCase):
                 self.metadata("manual-entry", "verbatim-excerpt"),
                 '## Key passages\n\n- “Exact words.” — page 12',
             ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                '## Key passages\n\n* “Exact star item.” — line 12',
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                '## Key passages\n\n1. “Exact ordered item.” — section Abstract',
+            ),
         )
         for metadata, body in cases:
             with self.subTest(
@@ -1191,6 +1199,32 @@ class CaptureFidelityValidationTests(unittest.TestCase):
                 "  - context\n"
                 "    ```\n"
                 "    “Hidden in nested fence.” — page 1\n"
+                "    ```",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
+                "- <script>\n"
+                "  “Hidden item evidence.” — page 1\n"
+                "  </script>",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "- intro\n"
+                "    <div>\n"
+                "  ## Key passages\n"
+                "  - “Hidden in nested HTML.” — page 1\n"
+                "    </div>",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "- intro\n"
+                "    ```\n"
+                "  ## Key passages\n"
+                "  - “Hidden in list fence.” — page 1\n"
                 "    ```",
                 "requires an exact Key passages locator",
             ),

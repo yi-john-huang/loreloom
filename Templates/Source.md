@@ -71,7 +71,7 @@ Summarize the source without adding conclusions that are not present.
 
 ## Key passages
 
-Use only short quotations when necessary and record page, timestamp, frame, or region locations.
+Use only short quotations when necessary and record page, timestamp, frame, line, section, or region locations.
 
 ## Amendments
 

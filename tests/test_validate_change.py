@@ -1877,6 +1877,14 @@ class CaptureFidelityContractTests(unittest.TestCase):
                     }
                 ),
             ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                '## Key passages\n\n* "Exact star item." — line 12',
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                '## Key passages\n\n1. "Exact ordered item." — section Abstract',
+            ),
         )
         for metadata, body in cases:
             with self.subTest(
@@ -2239,6 +2247,32 @@ class CaptureFidelityContractTests(unittest.TestCase):
                 "  - context\n"
                 "    ```\n"
                 "    “Hidden in nested fence.” — page 1\n"
+                "    ```",
+                "exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
+                "- <script>\n"
+                "  “Hidden item evidence.” — page 1\n"
+                "  </script>",
+                "exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "- intro\n"
+                "    <div>\n"
+                "  ## Key passages\n"
+                "  - “Hidden in nested HTML.” — page 1\n"
+                "    </div>",
+                "exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "- intro\n"
+                "    ```\n"
+                "  ## Key passages\n"
+                "  - “Hidden in list fence.” — page 1\n"
                 "    ```",
                 "exact Key passages locator",
             ),

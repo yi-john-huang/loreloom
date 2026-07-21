@@ -235,6 +235,10 @@ THEMATIC_BREAK_RE = re.compile(
 MARKDOWN_LIST_MARKER_RE = re.compile(
     r"^ {0,3}(?:[-+*]|\d{1,9}[.)])(?:[ \t]+(?P<content>.*)|[ \t]*$)"
 )
+MARKDOWN_LIST_CONTAINER_RE = re.compile(
+    r"^(?P<indent> {0,3})(?P<marker>[-+*]|\d{1,9}[.)])"
+    r"(?P<spaces>[ \t]+)(?P<content>.*)$"
+)
 
 
 def markdown_paragraph_open_after(line: str, was_open: bool) -> bool:
@@ -252,6 +256,52 @@ def markdown_paragraph_open_after(line: str, was_open: bool) -> bool:
     return True
 
 
+def markdown_container_content(
+    line: str, container_indent: int, paragraph_open: bool
+) -> tuple[str, int]:
+    """Return line content relative to an active CommonMark list container."""
+    physical_indent = len(line) - len(line.lstrip(" "))
+    if container_indent and physical_indent >= container_indent:
+        relative = line[container_indent:]
+    else:
+        if (
+            container_indent
+            and physical_indent < container_indent
+            and (
+                MARKDOWN_LIST_MARKER_RE.match(line)
+                or (
+                    line.strip()
+                    and not (
+                        paragraph_open
+                        and markdown_paragraph_open_after(line, True)
+                    )
+                )
+            )
+        ):
+            container_indent = 0
+        relative = line
+
+    quote_prefix = False
+    while quote := re.match(r"^ {0,3}>\s?(.*)$", relative):
+        quote_prefix = True
+        relative = quote.group(1)
+
+    if marker := MARKDOWN_LIST_CONTAINER_RE.match(relative):
+        spaces = marker.group("spaces")
+        content = marker.group("content")
+        padding = len(spaces) if len(spaces) <= 4 and content.strip() else 1
+        content_offset = (
+            len(marker.group("indent")) + len(marker.group("marker")) + padding
+        )
+        if not quote_prefix:
+            container_indent += content_offset
+        relative = relative[content_offset:]
+
+    return relative, container_indent
+
+
+
+
 def markdown_without_hidden_blocks(text: str) -> str:
     """Mask fenced code and CommonMark raw HTML while preserving newlines."""
     masked: list[str] = []
@@ -260,13 +310,17 @@ def markdown_without_hidden_blocks(text: str) -> str:
     html_end_re: re.Pattern[str] | None = None
     html_until_blank = False
     paragraph_open = False
+    container_indent = 0
     fence_opening_re = re.compile(r"^ {0,3}(?P<fence>`{3,}|~{3,})")
     for line in text.splitlines(keepends=True):
         content = line.rstrip("\r\n")
         newline = line[len(content) :]
+        structural, container_indent = markdown_container_content(
+            content, container_indent, paragraph_open
+        )
         if html_end_re is not None:
             masked.append(newline)
-            if html_end_re.search(content):
+            if html_end_re.search(structural):
                 html_end_re = None
             continue
         if html_until_blank:
@@ -279,14 +333,14 @@ def markdown_without_hidden_blocks(text: str) -> str:
                 rf"^ {{0,3}}{re.escape(fence_character)}"
                 rf"{{{fence_length},}}[ \t]*$"
             )
-            if closing_re.fullmatch(content):
+            if closing_re.fullmatch(structural):
                 fence_character = None
                 fence_length = 0
             masked.append(newline)
             continue
 
-        indent = len(content) - len(content.lstrip(" "))
-        stripped = content[indent:] if indent <= 3 else ""
+        indent = len(structural) - len(structural.lstrip(" "))
+        stripped = structural[indent:] if indent <= 3 else ""
         raw_tag = COMMONMARK_RAW_TAG_RE.match(stripped)
         if raw_tag:
             html_end_re = re.compile(
@@ -313,19 +367,20 @@ def markdown_without_hidden_blocks(text: str) -> str:
         ):
             html_until_blank = True
         else:
-            fence = fence_opening_re.match(content)
+            fence = fence_opening_re.match(structural)
             if fence and not (
                 fence.group("fence").startswith("`")
-                and "`" in content[fence.end() :]
+                and "`" in structural[fence.end() :]
             ):
                 marker = fence.group("fence")
                 fence_character = marker[0]
                 paragraph_open = False
+                fence_length = len(marker)
                 masked.append(newline)
             else:
                 masked.append(line)
                 paragraph_open = markdown_paragraph_open_after(
-                    content, paragraph_open
+                    structural, paragraph_open
                 )
             continue
 
@@ -360,7 +415,7 @@ def markdown_section_lines(text: str, heading: str) -> list[str]:
 
 
 def markdown_list_items(lines: list[str]) -> list[str]:
-    """Return dash-list items with visible paragraph continuations joined."""
+    """Return CommonMark list items with visible paragraph continuations joined."""
     items: list[str] = []
     current: list[str] = []
     blank_after_item = False
@@ -383,9 +438,10 @@ def markdown_list_items(lines: list[str]) -> list[str]:
                 fence_length = 0
             continue
 
-        if match := re.match(r"^ {0,3}-\s+(.*)$", line):
+        if match := MARKDOWN_LIST_MARKER_RE.match(line):
             flush()
-            current.append(match.group(1).strip())
+            if content := match.group("content"):
+                current.append(content.strip())
             blank_after_item = False
             continue
         if not current:

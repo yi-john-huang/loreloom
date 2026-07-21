@@ -2030,6 +2030,16 @@ class CaptureFidelityContractTests(unittest.TestCase):
                 "exact Key passages locator",
             ),
             (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n- — page 1",
+                "exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n- <excerpt> — page 1",
+                "exact Key passages locator",
+            ),
+            (
                 self.metadata(
                     "transcription",
                     "transcribed",

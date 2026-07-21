@@ -87,12 +87,13 @@ CAPTURE_BOUNDARY_LABELS = (
 )
 CONCRETE_BOUNDARY_LABELS = CAPTURE_BOUNDARY_LABELS[2:]
 LOCATOR_RE = re.compile(
-    r"(?:^|\s)(?:—|–|-)\s*(?:page|timestamp|frame|line|section|region)"
+    r"(?P<passage>\S(?:.*\S)?)\s+(?:—|–|-)\s*"
+    r"(?:page|timestamp|frame|line|section|region)"
     r"(?:\s+|:\s*)(?P<value>\S.*)$",
     re.IGNORECASE,
 )
 TIMESTAMP_LOCATOR_RE = re.compile(
-    r"(?:^|\s)(?:—|–|-)\s*timestamp"
+    r"(?P<passage>\S(?:.*\S)?)\s+(?:—|–|-)\s*timestamp"
     r"(?:\s+|:\s*)(?P<value>\S.*)$",
     re.IGNORECASE,
 )
@@ -1107,7 +1108,11 @@ def placeholder_value(value: str) -> bool:
 
 def concrete_locator(pattern: re.Pattern[str], value: str) -> bool:
     match = pattern.search(value)
-    return bool(match and not placeholder_value(match.group("value")))
+    return bool(
+        match
+        and not placeholder_value(match.group("passage"))
+        and not placeholder_value(match.group("value"))
+    )
 
 
 def capture_boundary_values(text: str) -> dict[str, str]:

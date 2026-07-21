@@ -91,12 +91,13 @@ CAPTURE_BOUNDARY_LABELS = (
 )
 CONCRETE_BOUNDARY_LABELS = CAPTURE_BOUNDARY_LABELS[2:]
 LOCATOR_RE = re.compile(
-    r"(?:^|\s)(?:—|–|-)\s*(?:page|timestamp|frame|line|section|region)"
+    r"(?P<passage>\S(?:.*\S)?)\s+(?:—|–|-)\s*"
+    r"(?:page|timestamp|frame|line|section|region)"
     r"(?:\s+|:\s*)(?P<value>\S.*)$",
     re.IGNORECASE,
 )
 TIMESTAMP_LOCATOR_RE = re.compile(
-    r"(?:^|\s)(?:—|–|-)\s*timestamp"
+    r"(?P<passage>\S(?:.*\S)?)\s+(?:—|–|-)\s*timestamp"
     r"(?:\s+|:\s*)(?P<value>\S.*)$",
     re.IGNORECASE,
 )
@@ -236,17 +237,27 @@ def placeholder_value(value: str) -> bool:
 
 def concrete_locator(pattern: re.Pattern[str], value: str) -> bool:
     match = pattern.search(value)
-    return bool(match and not placeholder_value(match.group("value")))
+    return bool(
+        match
+        and not placeholder_value(match.group("passage"))
+        and not placeholder_value(match.group("value"))
+    )
 
 
 def substantive_section_line(line: str) -> bool:
     if re.match(r"^(?: {4}|\t)", line):
         return False
-    if re.match(r"^\s*#{1,6}(?:\s|$)", line):
-        return False
-    content = re.sub(
-        r"^\s*(?:[-*+]|\d+[.)])(?:\s+|$)", "", line, count=1
+    content = line
+    container_re = re.compile(
+        r"^\s*(?:>\s?|(?:[-*+]|\d+[.)])(?:\s+|$)|\[[ xX]\](?:\s+|$))"
     )
+    while (unwrapped := container_re.sub("", content, count=1)) != content:
+        content = unwrapped
+    content = content.strip()
+    if re.match(r"^#{1,6}(?:\s|$)", content):
+        return False
+    if re.fullmatch(r"(?:\*\s*){3,}|(?:-\s*){3,}|(?:_\s*){3,}", content):
+        return False
     return not placeholder_value(content)
 
 

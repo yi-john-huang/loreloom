@@ -982,6 +982,16 @@ class CaptureFidelityValidationTests(unittest.TestCase):
                 "requires an exact Key passages locator",
             ),
             (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n- — page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n- <excerpt> — page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
                 self.metadata(
                     "transcription",
                     "transcribed",
@@ -1126,6 +1136,17 @@ sources:
                 ["[[Sources/weak]]"],
                 "    Hidden in an indented code block.",
             ),
+            *(
+                self.concept("draft", ["[[Sources/weak]]"], limitation)
+                for limitation in (
+                    "---",
+                    "***",
+                    "___",
+                    ">",
+                    "> <!-- limitation -->",
+                    "- [ ]",
+                )
+            ),
             self.concept("draft", ["[[Sources/weak]]"]).replace(
                 "sources:\n",
                 "notes: |\n"
@@ -1173,6 +1194,26 @@ sources:
             validate_vault.concept_capture_fidelity_warnings([weak, strong, draft]),
             [],
         )
+
+        for limitation in (
+            "> Capture fidelity remains unknown.",
+            "- [ ] Revalidate the original evidence before relying on exact wording.",
+        ):
+            with self.subTest(limitation=limitation):
+                draft.write_text(
+                    self.concept(
+                        "draft",
+                        ["[[Sources/weak]]"],
+                        limitation,
+                    ),
+                    encoding="utf-8",
+                )
+                self.assertEqual(
+                    validate_vault.concept_capture_fidelity_warnings(
+                        [weak, strong, draft]
+                    ),
+                    [],
+                )
 
         draft.write_text(
             self.concept("evergreen", ["[[Sources/weak]]"]), encoding="utf-8"

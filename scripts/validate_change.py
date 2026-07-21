@@ -1339,6 +1339,7 @@ def markdown_list_items(lines: list[str]) -> list[str]:
             if (
                 in_item
                 and item_paragraph_open
+                and quote_depth <= item_paragraph_quote_depth
                 and indent >= item_indent
                 and not blank_after_item
                 and (

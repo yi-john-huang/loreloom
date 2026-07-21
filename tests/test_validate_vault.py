@@ -829,6 +829,26 @@ class CaptureFidelityValidationTests(unittest.TestCase):
                 self.metadata("manual-entry", "verbatim-excerpt"),
                 '## Key passages\n\n1. “Exact ordered item.” — section Abstract',
             ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
+                "- “Visible passage\n"
+                "  ``` `not-a-fence`\n"
+                "  continued.” — page 1",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
+                "> - “Exact blockquoted item.” — page 12",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                self.boundary(
+                    **{"Paraphrased material": "Owner-declared summary."}
+                )
+                + "\n\n## Key passages\n\n"
+                '- <span title="context">Owner summary.</span> — page 1',
+            ),
         )
         for metadata, body in cases:
             with self.subTest(
@@ -909,6 +929,15 @@ class CaptureFidelityValidationTests(unittest.TestCase):
                 + "\n\n## Key passages\n\n"
                 "- “Lazy summary\n"
                 "continuation.” — page 8",
+                "must not use quoted Key passages",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                self.boundary(
+                    **{"Paraphrased material": "Owner-declared summary."}
+                )
+                + "\n\n## Key passages\n\n"
+                "- &quot;Quoted summary.&quot; — page 1",
                 "must not use quoted Key passages",
             ),
         )
@@ -1271,6 +1300,18 @@ class CaptureFidelityValidationTests(unittest.TestCase):
                 "## Key passages\n\n"
                 "intro\n"
                 "2. “Not a list item.” — page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
+                "-     “Hidden first-line code.” — page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
+                "- **<excerpt>** — page **<page>**",
                 "requires an exact Key passages locator",
             ),
             (

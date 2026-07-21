@@ -437,6 +437,8 @@ def markdown_list_items(lines: list[str]) -> list[str]:
 
     for raw_line in lines:
         line = raw_line.expandtabs(4)
+        while quote := re.match(r"^ {0,3}>\s?(.*)$", line):
+            line = quote.group(1)
         stripped = line.lstrip(" ")
         indent = len(line) - len(stripped)
         relative = line[item_indent:] if in_item and indent >= item_indent else line
@@ -475,9 +477,10 @@ def markdown_list_items(lines: list[str]) -> list[str]:
                 else 1
             )
             item_indent = marker_width + padding
-            content = line[item_indent:].strip()
-            if content:
-                current.append(content)
+            content = line[item_indent:]
+            content_indent = len(content) - len(content.lstrip(" "))
+            if content.strip() and content_indent < 4:
+                current.append(content.strip())
             blank_after_item = False
             outside_paragraph_open = False
             continue
@@ -495,7 +498,10 @@ def markdown_list_items(lines: list[str]) -> list[str]:
 
         relative = line[item_indent:] if indent >= item_indent else line
         relative_indent = len(relative) - len(relative.lstrip(" "))
-        if fence := re.match(r"^ {0,3}(?P<marker>`{3,}|~{3,})", relative):
+        if (fence := re.match(r"^ {0,3}(?P<marker>`{3,}|~{3,})", relative)) and not (
+            fence.group("marker").startswith("`")
+            and "`" in relative[fence.end() :]
+        ):
             marker = fence.group("marker")
             fence_character = marker[0]
             fence_length = len(marker)
@@ -548,11 +554,14 @@ def placeholder_value(value: str) -> bool:
 
 def concrete_locator(pattern: re.Pattern[str], value: str) -> bool:
     match = pattern.search(markdown_without_inline_comments(value))
+    if not match:
+        return False
+    passage = visible_markdown_text(match.group("passage"))
+    locator = visible_markdown_text(match.group("value"))
     return bool(
-        match
-        and not placeholder_value(match.group("passage"))
-        and any(character.isalnum() for character in match.group("passage"))
-        and not placeholder_value(match.group("value"))
+        not placeholder_value(passage)
+        and any(character.isalnum() for character in passage)
+        and not placeholder_value(locator)
     )
 
 
@@ -599,7 +608,7 @@ def key_passage_items(text: str) -> list[str]:
 
 
 def quoted_item(value: str) -> bool:
-    visible = markdown_without_inline_comments(value)
+    visible = visible_markdown_text(value)
     return bool(
         re.search(r'"[^"\n]+"', visible)
         or re.search(r"“[^”\n]+”", visible)

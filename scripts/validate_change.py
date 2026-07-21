@@ -1432,10 +1432,11 @@ def markdown_list_items(lines: list[str]) -> list[str]:
             blank_after_item = False
             continue
         if (
-            not blank_after_item
+            item_paragraph_open
+            and not blank_after_item
+            and quote_depth <= item_paragraph_quote_depth
             and not MARKDOWN_LIST_MARKER_RE.match(line)
-            and not re.match(r"^ {0,3}>", line)
-            and markdown_paragraph_open_after(line, True)
+            and markdown_paragraph_open_after(line, item_paragraph_open)
         ):
             current.append(line.strip())
             item_paragraph_open = True

@@ -2408,6 +2408,20 @@ class CaptureFidelityContractTests(unittest.TestCase):
             (
                 self.metadata("manual-entry", "verbatim-excerpt"),
                 "## Key passages\n\n"
+                "- ### context\n"
+                "“Outside item.” — page 1",
+                "exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
+                "- context\n"
+                "> “Outside block quote.” — page 1",
+                "exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
                 "intro\n"
                 "2. “Not a list item.” — page 1",
                 "exact Key passages locator",

@@ -2145,6 +2145,15 @@ class CaptureFidelityContractTests(unittest.TestCase):
                 self.metadata("manual-entry", "paraphrased"),
                 "## Capture boundary\n\n"
                 + "\n".join(
+                    f"> preface\n2. {label}: concrete value"
+                    for label in validate_change.CAPTURE_BOUNDARY_LABELS
+                ),
+                "requires all exact Capture Boundary labels",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                "## Capture boundary\n\n"
+                + "\n".join(
                     f"> - preface\n  2. {label}: concrete value"
                     for label in validate_change.CAPTURE_BOUNDARY_LABELS
                 ),

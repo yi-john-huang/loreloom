@@ -1316,7 +1316,7 @@ def markdown_list_items(lines: list[str]) -> list[str]:
         while quote := re.match(r"^ {0,3}>\s?(.*)$", line):
             quote_depth += 1
             line = quote.group(1)
-        if not in_item and quote_depth != previous_quote_depth:
+        if not in_item and quote_depth > previous_quote_depth:
             outside_paragraph_open = False
         previous_quote_depth = quote_depth
         stripped = line.lstrip(" ")

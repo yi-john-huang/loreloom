@@ -1253,6 +1253,29 @@ class CaptureFidelityValidationTests(unittest.TestCase):
             (
                 self.metadata("manual-entry", "verbatim-excerpt"),
                 "## Key passages\n\n"
+                "intro\n"
+                "01. <script>\n"
+                "    “Hidden after zero-padded marker.” — page 1\n"
+                "    </script>",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
+                "- context\n\n"
+                "\t\t“Hidden in indented code.” — page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
+                "intro\n"
+                "2. “Not a list item.” — page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
                 "- “Visible quotation.” <!-- — page 1 -->",
                 "requires an exact Key passages locator",
             ),
@@ -1529,6 +1552,7 @@ sources:
         for limitation in (
             "> Capture fidelity remains unknown.",
             "- [ ] Revalidate the original evidence before relying on exact wording.",
+            "- \n    Actual visible limitation.",
         ):
             with self.subTest(limitation=limitation):
                 draft.write_text(

@@ -293,7 +293,7 @@ def markdown_container_content(
         marker_text = marker.group("marker")
         if paragraph_open and (
             not content.strip()
-            or (marker_text[0].isdigit() and marker_text[:-1] != "1")
+            or (marker_text[0].isdigit() and int(marker_text[:-1]) != 1)
         ):
             return relative, container_indent
         padding = len(spaces) if len(spaces) <= 4 and content.strip() else 1
@@ -423,6 +423,9 @@ def markdown_list_items(lines: list[str]) -> list[str]:
     """Return CommonMark list items with visible paragraph continuations joined."""
     items: list[str] = []
     current: list[str] = []
+    in_item = False
+    outside_paragraph_open = False
+    item_indent = 0
     blank_after_item = False
     fence_character: str | None = None
     fence_length = 0
@@ -432,40 +435,74 @@ def markdown_list_items(lines: list[str]) -> list[str]:
             items.append(" ".join(current).strip())
             current.clear()
 
-    for line in lines:
-        stripped = line.lstrip(" \t")
+    for raw_line in lines:
+        line = raw_line.expandtabs(4)
+        stripped = line.lstrip(" ")
+        indent = len(line) - len(stripped)
+        relative = line[item_indent:] if in_item and indent >= item_indent else line
+
         if fence_character is not None:
             if re.fullmatch(
-                rf"{re.escape(fence_character)}{{{fence_length},}}[ \t]*",
-                stripped,
+                rf" {{0,3}}{re.escape(fence_character)}"
+                rf"{{{fence_length},}}[ \t]*",
+                relative,
             ):
                 fence_character = None
                 fence_length = 0
             continue
 
-        if match := MARKDOWN_LIST_MARKER_RE.match(line):
+        if match := MARKDOWN_LIST_CONTAINER_RE.match(line):
+            marker_text = match.group("marker")
+            marker_content = match.group("content")
+            if not in_item and outside_paragraph_open and (
+                not marker_content.strip()
+                or (
+                    marker_text[0].isdigit()
+                    and int(marker_text[:-1]) != 1
+                )
+            ):
+                outside_paragraph_open = markdown_paragraph_open_after(
+                    line, outside_paragraph_open
+                )
+                continue
             flush()
-            if content := match.group("content"):
-                current.append(content.strip())
+            in_item = True
+            spaces = match.group("spaces")
+            marker_width = len(match.group("indent")) + len(match.group("marker"))
+            padding = (
+                len(spaces)
+                if len(spaces) <= 4 and match.group("content").strip()
+                else 1
+            )
+            item_indent = marker_width + padding
+            content = line[item_indent:].strip()
+            if content:
+                current.append(content)
             blank_after_item = False
-            continue
-        if not current:
+            outside_paragraph_open = False
             continue
         if not line.strip():
-            blank_after_item = True
+            if in_item:
+                blank_after_item = True
+            else:
+                outside_paragraph_open = False
+            continue
+        if not in_item:
+            outside_paragraph_open = markdown_paragraph_open_after(
+                line, outside_paragraph_open
+            )
             continue
 
-        indent = len(line) - len(stripped)
-        if indent >= 2 and (
-            fence := re.match(r"(?P<marker>`{3,}|~{3,})", stripped)
-        ):
+        relative = line[item_indent:] if indent >= item_indent else line
+        relative_indent = len(relative) - len(relative.lstrip(" "))
+        if fence := re.match(r"^ {0,3}(?P<marker>`{3,}|~{3,})", relative):
             marker = fence.group("marker")
             fence_character = marker[0]
             fence_length = len(marker)
             continue
-        if indent >= 2:
-            if not (blank_after_item and indent >= 6):
-                current.append(stripped)
+        if indent >= item_indent:
+            if not (blank_after_item and relative_indent >= 4):
+                current.append(relative.strip())
             blank_after_item = False
             continue
         if (
@@ -477,7 +514,10 @@ def markdown_list_items(lines: list[str]) -> list[str]:
             current.append(line.strip())
             continue
         flush()
+        in_item = False
+        item_indent = 0
         blank_after_item = False
+        outside_paragraph_open = markdown_paragraph_open_after(line, False)
 
     flush()
     return items
@@ -531,6 +571,12 @@ def substantive_section_line(line: str) -> bool:
     if re.fullmatch(r"(?:\*\s*){3,}|(?:-\s*){3,}|(?:_\s*){3,}", content):
         return False
     return any(character.isalnum() for character in visible_markdown_text(content))
+
+
+def substantive_section(lines: list[str]) -> bool:
+    return any(
+        substantive_section_line(item) for item in markdown_list_items(lines)
+    ) or any(substantive_section_line(line) for line in lines)
 
 
 def capture_boundary_values(text: str) -> dict[str, str]:
@@ -1196,10 +1242,7 @@ def concept_capture_fidelity_warnings(notes: list[Path]) -> list[str]:
         limitation_text = markdown_without_inline_comments(
             "\n".join(limitation_lines)
         )
-        if any(
-            substantive_section_line(line)
-            for line in limitation_text.splitlines()
-        ):
+        if substantive_section(limitation_text.splitlines()):
             continue
         if (
             metadata.get("status") == "evergreen"

@@ -2301,6 +2301,29 @@ class CaptureFidelityContractTests(unittest.TestCase):
             (
                 self.metadata("manual-entry", "verbatim-excerpt"),
                 "## Key passages\n\n"
+                "intro\n"
+                "01. <script>\n"
+                "    “Hidden after zero-padded marker.” — page 1\n"
+                "    </script>",
+                "exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
+                "- context\n\n"
+                "\t\t“Hidden in indented code.” — page 1",
+                "exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
+                "intro\n"
+                "2. “Not a list item.” — page 1",
+                "exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
                 "- “Visible quotation.” <!-- — page 1 -->",
                 "exact Key passages locator",
             ),

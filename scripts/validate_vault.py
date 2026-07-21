@@ -429,6 +429,8 @@ def markdown_list_items(lines: list[str]) -> list[str]:
     blank_after_item = False
     fence_character: str | None = None
     fence_length = 0
+    in_indented_code = False
+    previous_quote_depth = 0
 
     def flush() -> None:
         if current:
@@ -437,8 +439,13 @@ def markdown_list_items(lines: list[str]) -> list[str]:
 
     for raw_line in lines:
         line = raw_line.expandtabs(4)
+        quote_depth = 0
         while quote := re.match(r"^ {0,3}>\s?(.*)$", line):
+            quote_depth += 1
             line = quote.group(1)
+        if not in_item and quote_depth != previous_quote_depth:
+            outside_paragraph_open = False
+        previous_quote_depth = quote_depth
         stripped = line.lstrip(" ")
         indent = len(line) - len(stripped)
         relative = line[item_indent:] if in_item and indent >= item_indent else line
@@ -482,6 +489,7 @@ def markdown_list_items(lines: list[str]) -> list[str]:
             if content.strip() and content_indent < 4:
                 current.append(content.strip())
             blank_after_item = False
+            in_indented_code = False
             outside_paragraph_open = False
             continue
         if not line.strip():
@@ -506,9 +514,15 @@ def markdown_list_items(lines: list[str]) -> list[str]:
             fence_character = marker[0]
             fence_length = len(marker)
             continue
+        if in_indented_code:
+            if indent >= item_indent and relative_indent >= 4:
+                continue
+            in_indented_code = False
         if indent >= item_indent:
-            if not (blank_after_item and relative_indent >= 4):
-                current.append(relative.strip())
+            if blank_after_item and relative_indent >= 4:
+                in_indented_code = True
+                continue
+            current.append(relative.strip())
             blank_after_item = False
             continue
         if (
@@ -523,6 +537,7 @@ def markdown_list_items(lines: list[str]) -> list[str]:
         in_item = False
         item_indent = 0
         blank_after_item = False
+        in_indented_code = False
         outside_paragraph_open = markdown_paragraph_open_after(line, False)
 
     flush()
@@ -543,7 +558,7 @@ def visible_markdown_text(value: str) -> str:
 
 
 def placeholder_value(value: str) -> bool:
-    stripped = value.strip()
+    stripped = visible_markdown_text(value).strip()
     return bool(
         not stripped
         or stripped.casefold() in {"none", "n/a"}
@@ -572,7 +587,17 @@ def substantive_section_line(line: str) -> bool:
     container_re = re.compile(
         r"^\s*(?:>\s?|(?:[-*+]|\d+[.)])(?:\s+|$)|\[[ xX]\](?:\s+|$))"
     )
-    while (unwrapped := container_re.sub("", content, count=1)) != content:
+    while True:
+        marker = MARKDOWN_LIST_CONTAINER_RE.match(content)
+        if (
+            marker
+            and len(marker.group("spaces")) > 4
+            and marker.group("content").strip()
+        ):
+            return False
+        unwrapped = container_re.sub("", content, count=1)
+        if unwrapped == content:
+            break
         content = unwrapped
     content = content.strip()
     if re.match(r"^#{1,6}(?:\s|$)", content):

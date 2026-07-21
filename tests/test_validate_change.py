@@ -1898,6 +1898,12 @@ class CaptureFidelityContractTests(unittest.TestCase):
                 "> - “Exact blockquoted item.” — page 12",
             ),
             (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
+                "intro\n"
+                "> 2. “Exact wording in a new quote.” — page 12",
+            ),
+            (
                 self.metadata("manual-entry", "paraphrased"),
                 self.boundary(
                     **{"Paraphrased material": "Owner-declared summary."}
@@ -2110,6 +2116,11 @@ class CaptureFidelityContractTests(unittest.TestCase):
                     **{"Extracted or transcribed material": "Transcript."}
                 ),
                 "audio/video provenance",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                self.boundary(**{"Paraphrased material": "**None**"}),
+                "Paraphrased material",
             ),
             (
                 self.metadata("manual-entry", "preserved-original"),
@@ -2348,6 +2359,14 @@ class CaptureFidelityContractTests(unittest.TestCase):
                 "## Key passages\n\n"
                 "intro\n"
                 "2. “Not a list item.” — page 1",
+                "exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
+                "- context\n\n"
+                "      first code line\n"
+                "      “Hidden later code.” — page 1",
                 "exact Key passages locator",
             ),
             (

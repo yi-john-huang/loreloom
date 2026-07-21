@@ -4,20 +4,21 @@
 Follow AGENTS.md, .agents/policies/vault-policy.md, and
 .agents/workflows/source-to-knowledge.md.
 
-Exact Source inputs:
-- <SOURCE PATHS>
+Exact Source or Daily inputs:
+- <SOURCE OR DAILY PATHS>
 
 Allowed output directory:
 - Knowledge/<OPTIONAL SUBDIRECTORY>
 
-Read the complete supplied Source notes and the source material only if it is
+Read the complete supplied Source and Daily notes and Source material only if it is
 available within the authorized context. Search Knowledge by title, aliases,
 and synonyms before creating notes.
 
 Create or update the fewest atomic Concept drafts needed. Each claim must be
-traceable to an input Source, fact must be separated from inference, and
-uncertainty must be explicit. Record every Source's capture_mode before
-extracting claims. For each draft, if any Source it cites uses unknown,
+traceable to an input Source or Daily note, fact must be separated from
+inference, and uncertainty must be explicit. Record every Source's
+`capture_mode` before extracting claims; Daily inputs are exempt from
+Source-only capture fields. For each draft, if any Source it cites uses unknown,
 paraphrased, or reference-only, add a non-empty ## Evidence limitations
 section with the exact applicable statements from
 .agents/workflows/source-to-knowledge.md. Retain weaker-source limitations

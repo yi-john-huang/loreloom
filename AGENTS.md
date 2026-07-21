@@ -28,7 +28,7 @@ If a requested custom role is unavailable, do not substitute another model or ro
 
 Route repeatable work through the narrowest matching repository skill:
 
-- `$capture-vault-source` for exact existing Assets or URLs into editable Source intake notes;
+- `$capture-vault-source` for exact existing Assets, URLs, or Inbox provenance into editable Source intake notes;
 - `$triage-vault-inbox` for unprocessed Inbox captures;
 - `$distill-vault-sources` for cited Concept drafts;
 - `$connect-vault-notes` for bounded cross-topic linking;
@@ -38,7 +38,7 @@ Route repeatable work through the narrowest matching repository skill:
 
 ## Authority by directory
 
-- `Sources/`: provenance-bound evidence records. New Sources require explicit `source_type`, `capture_method`, and `capture_mode`; use `unknown` when fidelity is not established. Agents never fidelity-upgrade an existing Source; owners make classification corrections directly or record them in append-only amendments. Never rewrite, summarize in place, rename, or delete a Source unless the user explicitly identifies the exact file and action.
+- `Sources/`: provenance-bound evidence records. New Sources require explicit `source_type`, `capture_method`, and `capture_mode`; use `unknown` when fidelity is not established. Agents may update an existing processing Source only when the user identifies the exact file and action. Reviewed Sources are append-only: agents may add an exact owner-authorized dated Amendment but never rewrite or fidelity-upgrade them. Rename or delete any Source only with exact approval.
 - `Knowledge/`: canonical durable knowledge. Agents may create or update `status: draft` notes with citations. Only a human may approve `status: evergreen`.
 - `Wiki/`: generated synthesis. Agents may create and regenerate pages when `generated: true`; preserve any section between `<!-- human:start -->` and `<!-- human:end -->`.
 - `MOCs/`: navigation. Agents may add links and descriptions; avoid deleting human-curated links without explanation.

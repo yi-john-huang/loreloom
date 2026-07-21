@@ -829,20 +829,29 @@ class CaptureFidelityValidationTests(unittest.TestCase):
                 self.assertEqual(self.fidelity_errors(metadata, body), [])
 
     def test_multiline_capture_boundary_value_is_accepted(self) -> None:
-        body = self.boundary(
+        base = self.boundary(
             **{"Paraphrased material": "Owner-declared summary."}
-        ).replace(
-            "- Paraphrased material: Owner-declared summary.",
-            "- Paraphrased material:\n  Owner-declared summary.",
+        )
+        bodies = (
+            base.replace(
+                "- Paraphrased material: Owner-declared summary.",
+                "- Paraphrased material:\n  Owner-declared summary.",
+            ),
+            base.replace(
+                "- Paraphrased material: Owner-declared summary.",
+                "- Paraphrased material:\nOwner-declared summary.",
+            ),
         )
 
-        self.assertEqual(
-            self.fidelity_errors(
-                self.metadata("manual-entry", "paraphrased"),
-                body,
-            ),
-            [],
-        )
+        for body in bodies:
+            with self.subTest(body=body):
+                self.assertEqual(
+                    self.fidelity_errors(
+                        self.metadata("manual-entry", "paraphrased"),
+                        body,
+                    ),
+                    [],
+                )
 
     def test_multiline_quoted_passages_are_checked(self) -> None:
         cases = (
@@ -868,6 +877,30 @@ class CaptureFidelityValidationTests(unittest.TestCase):
                 + "\n\n## Key passages\n\n"
                 "- “Quoted summary\n"
                 "  continuation.” — page 7",
+                "must not use quoted Key passages",
+            ),
+            (
+                self.metadata(
+                    "transcription",
+                    "transcribed",
+                    source_type="video",
+                ),
+                self.boundary(
+                    **{"Extracted or transcribed material": "Typed transcript."}
+                )
+                + "\n\n## Key passages\n\n"
+                "- “Lazy transcript\n"
+                "continuation.” — page 8",
+                "require a timestamp locator",
+            ),
+            (
+                self.metadata("manual-entry", "paraphrased"),
+                self.boundary(
+                    **{"Paraphrased material": "Owner-declared summary."}
+                )
+                + "\n\n## Key passages\n\n"
+                "- “Lazy summary\n"
+                "continuation.” — page 8",
                 "must not use quoted Key passages",
             ),
         )
@@ -908,6 +941,26 @@ class CaptureFidelityValidationTests(unittest.TestCase):
             ),
             [],
         )
+
+        for list_body in (
+            "intro\n"
+            "2. continuation\n"
+            "<custom-element>\n"
+            "## Key passages\n\n"
+            "- “Visible after ordered marker.” — page 5",
+            "- intro\n"
+            "<custom-element>\n"
+            "## Key passages\n\n"
+            "- “Visible after list paragraph.” — page 6",
+        ):
+            with self.subTest(list_body=list_body):
+                self.assertEqual(
+                    self.fidelity_errors(
+                        self.metadata("manual-entry", "verbatim-excerpt"),
+                        list_body,
+                    ),
+                    [],
+                )
 
     def test_invalid_capture_prerequisites_fail_closed(self) -> None:
         primary_not_extracted = {
@@ -1118,6 +1171,50 @@ class CaptureFidelityValidationTests(unittest.TestCase):
             ),
             (
                 self.metadata("manual-entry", "verbatim-excerpt"),
+                "Title\n"
+                "===\n"
+                "<custom-element>\n"
+                "## Key passages\n"
+                "- “Hidden after Setext.” — page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                '<custom title=">">\n'
+                "## Key passages\n"
+                "- “Hidden by quoted attribute.” — page 1",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n"
+                "  - context\n"
+                "    ```\n"
+                "    “Hidden in nested fence.” — page 1\n"
+                "    ```",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
+                "## Key passages\n\n"
+                "- “Visible quotation.” <!-- — page 1 -->",
+                "requires an exact Key passages locator",
+            ),
+            (
+                self.metadata(
+                    "transcription",
+                    "transcribed",
+                    source_type="video",
+                ),
+                self.boundary(
+                    **{"Extracted or transcribed material": "Typed transcript."}
+                )
+                + "\n\n## Key passages\n\n"
+                "- “Visible quotation.” <!-- — timestamp 00:01 -->",
+                "require a timestamp locator",
+            ),
+            (
+                self.metadata("manual-entry", "verbatim-excerpt"),
                 "## Key passages\n\n- “Fake.” fake-page 1",
                 "requires an exact Key passages locator",
             ),
@@ -1291,6 +1388,16 @@ sources:
                 ["[[Sources/weak]]"],
                 "    Hidden in an indented code block.",
             ),
+            self.concept(
+                "draft",
+                ["[[Sources/weak]]"],
+                "<span></span>",
+            ),
+            self.concept(
+                "draft",
+                ["[[Sources/weak]]"],
+                "[]()",
+            ),
             *(
                 self.concept("draft", ["[[Sources/weak]]"], limitation)
                 for limitation in (
@@ -1336,6 +1443,14 @@ sources:
             [weak, strong, draft]
         )
         self.assertTrue(any("Concept cites unknown" in warning for warning in warnings))
+
+        draft.write_text(
+            self.concept("draft", ["[[Sources/strong]]"]), encoding="utf-8"
+        )
+        self.assertEqual(
+            validate_vault.concept_capture_fidelity_warnings([weak, strong, draft]),
+            [],
+        )
 
         draft.write_text(
             self.concept(

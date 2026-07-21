@@ -48,7 +48,7 @@ Folders express lifecycle and authority. Links, tags, and Maps of Content expres
 ## Core Capabilities
 
 1. **Fast, untrusted capture** — `Inbox/` and `Daily/` accept incomplete observations without treating them as durable truth.
-2. **Local or URL evidence intake** — owners supply exact Assets or absolute HTTP(S) URLs; URLs are recorded without fetching or implying reachability, freshness, or extraction.
+2. **Local, URL, or Inbox evidence intake** — owners supply exact Assets, absolute HTTP(S) URLs, or exact existing Inbox provenance; URLs are recorded without fetching or implying reachability, freshness, or extraction.
 3. **Classified evidence preservation** — Sources remain editable while processing, require `source_type` (what the evidence is), `capture_method` (how it entered), and `capture_mode` (how the representation relates to original evidence), then become append-only after owner review. Fidelity may remain explicitly unknown.
 4. **Owner-controlled review** — direct owner Source review is the default; exact signed `source_review` is an advanced alternative. Current Asset bytes and mechanical capture prerequisites are revalidated before distillation.
 5. **Canonical knowledge** — `Knowledge/` contains one durable concept per note with traceable sources and explicit confidence; low-fidelity Source modes propagate mode-specific Evidence limitations, and the owner reviews draft claims, citations, and limitations.

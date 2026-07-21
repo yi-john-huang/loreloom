@@ -8,7 +8,7 @@ The vault stores many subjects in one graph while separating notes by lifecycle 
 
 ### Capture: `Inbox/`, `Daily/`, and `Assets/`
 
-Capture is fast and permissive. Inbox items may be incomplete, duplicated, or untrusted; Daily notes are an event log, not automatically durable truth; and Assets holds owner-supplied binary evidence. `$capture-vault-source` turns exact Assets or absolute HTTP(S) URLs into editable Source intake notes without fetching URLs or overwriting resources; URL recording does not assert reachability, freshness, or extraction.
+Capture is fast and permissive. Inbox items may be incomplete, duplicated, or untrusted; Daily notes are an event log, not automatically durable truth; and Assets holds owner-supplied binary evidence. `$capture-vault-source` turns exact Assets, absolute HTTP(S) URLs, or exact existing Inbox provenance into editable Source intake notes without fetching URLs or overwriting resources; URL recording does not assert reachability, freshness, or extraction.
 
 ### Evidence: `Sources/`
 

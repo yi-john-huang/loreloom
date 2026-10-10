@@ -622,7 +622,13 @@ class RequestConstructionTests(JevAdvisoryTestCase):
             "dangling": "[[Sources/Missing]]",
             "parent escape": "[[../outside]]",
             "nested escape": "[[Sources/../../outside]]",
-            "absolute": f"[[{self.vault.parent / 'outside'}]]",
+            "absolute": f"[[{(self.vault.parent / 'outside').as_posix()}]]",
+            "posix absolute": "[[/Sources/Good]]",
+            "network share": "[[//host/share/Sources/Good]]",
+            "drive absolute": "[[C:/Sources/Good]]",
+            "drive relative": "[[C:Sources/Good]]",
+            "drive component": "[[Sources/C:/Good]]",
+            "alternate data stream": "[[Sources/Good.md:stream]]",
             "not a wikilink": "Sources/Good",
             "empty": "[[ ]]",
             "unreadable": "[[Sources/Binary]]",
@@ -635,6 +641,33 @@ class RequestConstructionTests(JevAdvisoryTestCase):
 
                 self.assertEqual(unresolved, 1)
                 self.assertEqual(state["sources"], [{"excerpt": "good body"}])
+
+    def test_backslash_source_paths_are_unresolved_on_every_platform(self) -> None:
+        self.write("Sources/Good.md", source_note("good body"))
+        self.write("../outside.md", source_note("outside body"))
+        entries = [
+            "[[Sources/Good]]",
+            r"[[Sources\Good]]",
+            r"[[..\outside]]",
+            r"[[C:\Sources\Good]]",
+            r"[[\\host\share\Sources\Good]]",
+            f"[[{self.vault.parent / 'outside'}]]",
+        ]
+
+        state, unresolved = jev_advisory.build_state(
+            self.vault,
+            "claim-support",
+            jev_advisory.Frontmatter({"sources": entries}, "body"),
+            4000,
+        )
+
+        self.assertEqual(unresolved, len(entries) - 1)
+        self.assertEqual(state["sources"], [{"excerpt": "good body"}])
+
+    def test_backslash_in_a_double_quoted_source_is_unparseable(self) -> None:
+        text = self.concept([r"[[C:\Users\outside]]"])
+
+        self.assertIsNone(jev_advisory.read_frontmatter(text))
 
     def test_symlinked_source_is_unresolved(self) -> None:
         self.write("../outside.md", source_note("outside body"))

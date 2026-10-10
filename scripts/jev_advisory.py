@@ -386,7 +386,11 @@ def _source_body(root: Path, entry: str) -> str | None:
     if not name.endswith(".md"):
         name += ".md"
     relative = PurePosixPath(name)
-    if relative.is_absolute() or any(part in ("", ".", "..") for part in relative.parts):
+    # A colon is a drive or alternate data stream on Windows, so "C:/x" would
+    # replace the vault root when joined; reject it everywhere to stay portable.
+    if relative.is_absolute() or any(
+        part in ("", ".", "..") or ":" in part for part in relative.parts
+    ):
         return None
     path = root.joinpath(*relative.parts)
     if path.is_absolute() and root not in path.parents:

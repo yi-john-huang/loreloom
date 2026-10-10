@@ -63,4 +63,4 @@ jobs:
         run: uv run --locked --python ${{ matrix.python }} python scripts/doctor_vault.py
 
       - name: Test portable core
-        run: uv run --locked --python ${{ matrix.python }} python -m unittest -v tests.test_doctor_vault tests.test_validate_vault
+        run: uv run --locked --python ${{ matrix.python }} python -m unittest -v tests.test_doctor_vault tests.test_validate_vault tests.test_jev_advisory

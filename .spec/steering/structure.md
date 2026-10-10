@@ -20,16 +20,19 @@ loreloom/
 ├── Assets/                # Linked binary attachments
 ├── Templates/             # Note templates; excluded from instance validation
 ├── schemas/
-│   └── frontmatter.schema.json
+│   ├── frontmatter.schema.json
+│   └── jev-advisory.schema.json
 ├── scripts/
 │   ├── doctor_vault.py
 │   ├── validate_vault.py
 │   ├── validate_change.py
-│   └── create_approval_receipt.py
+│   ├── create_approval_receipt.py
+│   └── jev_advisory.py        # Optional, default-OFF advisory helper
 ├── tests/
 │   ├── test_doctor_vault.py
 │   ├── test_validate_vault.py
-│   └── test_validate_change.py
+│   ├── test_validate_change.py
+│   └── test_jev_advisory.py
 ├── docs/                  # Architecture, conventions, privacy, and workflows
 ├── .agents/
 │   ├── policies/          # Standing authority and safety rules
@@ -61,6 +64,7 @@ Only `.spec/steering/` supplies shared project context. Other locally generated 
 - `Projects/`, `Areas/`, and `Daily/` change only when the requested workflow requires them.
 - `Templates/`, `schemas/`, `.agents/`, `.codex/`, scripts, tests, documentation, and steering files are framework-maintenance scope.
 - `Archive/` preserves history and is not a trash directory.
+- `.loreloom/jev/` holds local, gitignored Jev advisory sidecars. They are regenerable and carry no authority; only `scripts/jev_advisory.py` writes them.
 
 ## Markdown and Note Naming
 

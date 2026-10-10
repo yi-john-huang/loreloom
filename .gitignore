@@ -14,6 +14,9 @@
 *.secret
 *.secrets
 
+# Local Jev advisory sidecars (regenerable, never authoritative)
+.loreloom/
+
 # Local/private material
 Private/
 private/

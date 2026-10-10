@@ -39,9 +39,32 @@ Source intake keeps three fields distinct: `source_type` is what the evidence is
 
 Distillation records every Source's `capture_mode`. Drafts using `unknown`, `paraphrased`, or `reference-only` evidence include a non-empty `## Evidence limitations` section with the mode-specific workflow wording, even when stronger evidence is also cited.
 
+## Optional Jev advisories
+
+`scripts/jev_advisory.py` is an optional, default-OFF helper that asks the third-party TypeSafe Jev decision API for typed answers about notes the owner selects. It has two commands:
+
+```sh
+# Order Inbox captures for owner review
+uv run python scripts/jev_advisory.py inbox-triage "Inbox/exact capture.md"
+
+# Point the owner at weakly supported claims in draft Concepts
+uv run python scripts/jev_advisory.py claim-support "Knowledge/exact draft.md"
+```
+
+- `inbox-triage` accepts `type: inbox` notes under `Inbox/` and stores a promotion-value score, a noise probability, and one kind (`source-candidate`, `idea`, `task`, `reference`, or `noise`).
+- `claim-support` accepts `type: concept` notes with `status: draft` under `Knowledge/` and stores a probability that the claims are supported by the cited notes plus a citation-quality score. Notes with any other status are skipped.
+- `--all` selects every eligible note in that directory. Without it, name each path.
+
+A Jev advisory is not review or approval. It changes no `status`, `review_status`, `reviewed`, or evergreen state, edits no note, Source, or approval receipt, and decides no disposition or promotion. The owner reads it and acts through the normal review workflow.
+
+Results are JSON sidecars under `.loreloom/jev/<kind>/`, one per note. They are regenerable, stay on the local machine, and hold answers only: no note text and no key. The vault validator checks existing sidecars against `schemas/jev-advisory.schema.json` and never contacts the network.
+
+The helper does nothing until the owner enables it; see the README for the toggle. When Jev cannot answer (no key, network error, timeout, HTTP error, or an unexpected response) the command still exits `0` and reports `unavailable` with a reason code. It keeps an earlier `ok` advisory when the note and its cited notes are unchanged; otherwise it records the `unavailable` result. A disabled or `unavailable` result never blocks a workflow. See [Privacy](PRIVACY.md) for what is sent.
+
 ## Safety properties
 
 - Captured text cannot grant itself tool permissions.
+- Optional Jev advisories inform the owner and carry no authority; a strong answer changes no note and no review state.
 - Sources are not rewritten during summarization.
 - Generated synthesis is distinguishable from reviewed knowledge.
 - Destructive actions require exact targets and explicit approval.

@@ -39,6 +39,10 @@ MANAGED_ROOTS = (
     "Daily",
     "Archive",
 )
+JEV_SIDECAR_DIRECTORY = (".loreloom", "jev")
+JEV_SCHEMA_PATH = "schemas/jev-advisory.schema.json"
+MAX_JEV_SIDECAR_BYTES = 1024 * 1024
+MAX_JEV_MESSAGE_CHARS = 300
 FRONTMATTER_RE = re.compile(r"\A---\s*\n(.*?)\n---\s*(?:\n|\Z)", re.DOTALL)
 WIKILINK_RE = re.compile(r"(?<!!)\[\[([^\[\]]+?)\]\]")
 ASSET_EMBED_RE = re.compile(r"!\[\[([^\[\]]+?)\]\]")
@@ -1559,6 +1563,69 @@ def skill_errors() -> list[str]:
     return errors
 
 
+def jev_sidecar_findings() -> tuple[list[str], list[str]]:
+    """Check existing Jev advisory sidecars offline; return (errors, warnings)."""
+    import json
+
+    from jsonschema import SchemaError
+
+    base = ROOT.joinpath(*JEV_SIDECAR_DIRECTORY)
+    if not base.is_dir():
+        return [], []
+    sidecars = sorted(base.rglob("*.json"))
+    if not sidecars:
+        return [], []
+
+    try:
+        schema = json.loads((ROOT / JEV_SCHEMA_PATH).read_text(encoding="utf-8"))
+        Draft202012Validator.check_schema(schema)
+    except (OSError, ValueError, SchemaError):
+        return [f"{JEV_SCHEMA_PATH}: missing or invalid Jev advisory schema"], []
+    validator = Draft202012Validator(schema, format_checker=FormatChecker())
+
+    errors: list[str] = []
+    warnings: list[str] = []
+    for path in sidecars:
+        name = relative(path)
+        if path.is_symlink():
+            errors.append(f"{name}: Jev sidecar must not be a symbolic link")
+            continue
+        if not path.is_file():
+            errors.append(f"{name}: Jev sidecar must be a regular file")
+            continue
+        try:
+            if path.stat().st_size > MAX_JEV_SIDECAR_BYTES:
+                errors.append(f"{name}: Jev sidecar is larger than 1 MiB")
+                continue
+            record = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError, RecursionError):
+            errors.append(f"{name}: Jev sidecar is not valid JSON")
+            continue
+
+        violations = sorted(
+            validator.iter_errors(record),
+            key=lambda item: [str(part) for part in item.absolute_path],
+        )
+        if violations:
+            for violation in violations:
+                field = ".".join(str(part) for part in violation.absolute_path)
+                message = violation.message[:MAX_JEV_MESSAGE_CHARS]
+                errors.append(f"{name}: {field or 'sidecar'}: {message}")
+            continue
+
+        target = record["target"]
+        expected = "/".join(
+            (*JEV_SIDECAR_DIRECTORY, record["kind"], f"{target[:-3]}.json")
+        )
+        if name != expected:
+            errors.append(
+                f"{name}: location does not match kind and target; expected {expected}"
+            )
+        elif not (ROOT / target).is_file():
+            warnings.append(f"{name}: advisory target is missing: {target}")
+    return errors, warnings
+
+
 def main() -> int:
     notes = managed_notes()
     all_paths = all_note_paths()
@@ -1571,6 +1638,9 @@ def main() -> int:
     errors.extend(codex_agent_errors())
     errors.extend(skill_errors())
     warnings = concept_capture_fidelity_warnings(notes)
+    jev_errors, jev_warnings = jev_sidecar_findings()
+    errors.extend(jev_errors)
+    warnings.extend(jev_warnings)
 
     if errors:
         print(f"Vault validation failed with {len(errors)} error(s):")

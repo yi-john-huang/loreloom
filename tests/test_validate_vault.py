@@ -1,5 +1,11 @@
 from __future__ import annotations
+import ast
+import contextlib
 import hashlib
+import io
+import json
+import os
+import socket
 
 import shutil
 import subprocess
@@ -1871,6 +1877,298 @@ class MissingConfigurationTests(unittest.TestCase):
         errors = validate_vault.codex_agent_errors()
 
         self.assertTrue(any("missing .codex/config.toml" in error for error in errors))
+
+
+class JevSidecarValidationTests(unittest.TestCase):
+    SCHEMA = "schemas/jev-advisory.schema.json"
+
+    def setUp(self) -> None:
+        self.repo = Path(tempfile.mkdtemp())
+        self.original_root = validate_vault.ROOT
+        validate_vault.ROOT = self.repo
+        (self.repo / "schemas").mkdir(parents=True)
+        framework_root = Path(__file__).resolve().parents[1]
+        for name in ("frontmatter.schema.json", "jev-advisory.schema.json"):
+            shutil.copy2(framework_root / "schemas" / name, self.repo / "schemas" / name)
+        common = (
+            "status: {status}\ncreated: 2026-07-18\nupdated: 2026-07-18\n"
+            "tags: []\naliases: []\n"
+        )
+        self.write(
+            "Inbox/Capture.md",
+            "---\ntype: inbox\ntitle: Capture\n"
+            + common.format(status="captured")
+            + "captured_from: manual\n---\n\n# Capture\n",
+        )
+        self.write(
+            "Daily/2026-07-18.md",
+            '---\ntype: daily\ntitle: "2026-07-18"\n'
+            + common.format(status="captured")
+            + "date: 2026-07-18\n---\n\n# 2026-07-18\n",
+        )
+        self.write(
+            "Knowledge/Draft.md",
+            "---\ntype: concept\ntitle: Draft\n"
+            + common.format(status="draft")
+            + 'confidence: low\nreviewed: null\nsources:\n  - "[[Daily/2026-07-18]]"\n'
+            "---\n\n# Draft\n\n## Sources\n\n- [[Daily/2026-07-18]]\n",
+        )
+
+    def tearDown(self) -> None:
+        validate_vault.ROOT = self.original_root
+        shutil.rmtree(self.repo)
+
+    def write(self, relative_path: str, content: str | bytes) -> Path:
+        path = self.repo / relative_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        data = content if isinstance(content, bytes) else content.encode("utf-8")
+        path.write_bytes(data)
+        return path
+
+    def record(self, kind: str = "inbox-triage", status: str = "ok") -> dict:
+        score = {
+            "type": "score",
+            "score": 2.5,
+            "confidence": 0.5,
+            "legend": None,
+            "probabilities": None,
+        }
+        answers = {
+            "inbox-triage": {
+                "promotion_value": score,
+                "noise": {"type": "noul", "noul": 0.25},
+                "kind": {
+                    "type": "choice",
+                    "choice": "idea",
+                    "confidence": None,
+                    "probabilities": None,
+                },
+            },
+            "claim-support": {
+                "claims_supported": {"type": "noul", "noul": 0.75},
+                "citation_quality": score,
+            },
+        }[kind]
+        record = {
+            "schema_version": 1,
+            "advisory_only": True,
+            "kind": kind,
+            "target": "Inbox/Capture.md" if kind == "inbox-triage" else "Knowledge/Draft.md",
+            "status": status,
+            "reason": None if status == "ok" else "timeout",
+            "generated_at": "2026-10-10T03:00:00Z",
+            "input_sha256": "a" * 64,
+            "model": "synthetic-model-1" if status == "ok" else None,
+            "answers": answers if status == "ok" else None,
+        }
+        if kind == "claim-support":
+            record["unresolved_sources"] = 0
+        return record
+
+    def write_sidecar(self, record: dict, location: str | None = None) -> str:
+        location = location or (
+            f".loreloom/jev/{record['kind']}/{record['target'][:-3]}.json"
+        )
+        self.write(location, json.dumps(record))
+        return location
+
+    def run_main(self) -> tuple[int, str]:
+        output = io.StringIO()
+        with mock.patch.object(
+            validate_vault, "codex_agent_errors", return_value=[]
+        ), mock.patch.object(
+            validate_vault, "skill_errors", return_value=[]
+        ), contextlib.redirect_stdout(output):
+            code = validate_vault.main()
+        return code, output.getvalue()
+
+    def test_no_sidecar_directory_yields_no_findings(self) -> None:
+        self.assertEqual(validate_vault.jev_sidecar_findings(), ([], []))
+
+    def test_directory_without_sidecars_yields_no_findings(self) -> None:
+        (self.repo / ".loreloom" / "jev" / "inbox-triage").mkdir(parents=True)
+        self.write(".loreloom/jev/notes.txt", "not a sidecar")
+        (self.repo / "schemas" / "jev-advisory.schema.json").unlink()
+
+        self.assertEqual(validate_vault.jev_sidecar_findings(), ([], []))
+
+    def test_valid_sidecars_yield_no_findings(self) -> None:
+        for kind in ("inbox-triage", "claim-support"):
+            for status in ("ok", "unavailable"):
+                with self.subTest(kind=kind, status=status):
+                    self.write_sidecar(self.record(kind, status))
+
+                    self.assertEqual(validate_vault.jev_sidecar_findings(), ([], []))
+
+    def test_schema_violation_is_a_path_specific_error(self) -> None:
+        record = self.record()
+        record["answers"]["noise"]["noul"] = 1.2
+        record["reviewed"] = "2026-10-10"
+        location = self.write_sidecar(record)
+
+        errors, warnings = validate_vault.jev_sidecar_findings()
+
+        self.assertEqual(warnings, [])
+        self.assertGreaterEqual(len(errors), 2)
+        self.assertTrue(all(error.startswith(f"{location}: ") for error in errors))
+        self.assertTrue(any("reviewed" in error for error in errors), errors)
+
+    def test_invalid_json_is_an_error(self) -> None:
+        for content in (b"{not json", b"\xff\xfe", b"[" * 200000):
+            with self.subTest(content=content[:10]):
+                location = ".loreloom/jev/inbox-triage/Inbox/Capture.json"
+                self.write(location, content)
+
+                errors, warnings = validate_vault.jev_sidecar_findings()
+
+                self.assertEqual(warnings, [])
+                self.assertEqual(len(errors), 1)
+                self.assertTrue(errors[0].startswith(f"{location}: "), errors)
+                self.assertIn("valid JSON", errors[0])
+
+    def test_location_must_match_kind_and_target(self) -> None:
+        for location in (
+            ".loreloom/jev/inbox-triage/Inbox/Other.json",
+            ".loreloom/jev/claim-support/Inbox/Capture.json",
+            ".loreloom/jev/Capture.json",
+        ):
+            with self.subTest(location=location):
+                path = self.repo / self.write_sidecar(self.record(), location)
+
+                errors, warnings = validate_vault.jev_sidecar_findings()
+
+                self.assertEqual(warnings, [])
+                self.assertEqual(len(errors), 1)
+                self.assertTrue(errors[0].startswith(f"{location}: "), errors)
+                self.assertIn("location", errors[0])
+                path.unlink()
+
+    def test_missing_target_is_a_warning_and_validation_still_passes(self) -> None:
+        location = self.write_sidecar(self.record())
+        (self.repo / "Inbox" / "Capture.md").unlink()
+
+        errors, warnings = validate_vault.jev_sidecar_findings()
+        code, output = self.run_main()
+
+        self.assertEqual(errors, [])
+        self.assertEqual(len(warnings), 1)
+        self.assertTrue(warnings[0].startswith(f"{location}: "), warnings)
+        self.assertIn("Inbox/Capture.md", warnings[0])
+        self.assertEqual(code, 0)
+        self.assertIn("Vault validation warning(s):", output)
+        self.assertIn(warnings[0], output)
+        self.assertTrue(output.splitlines()[-1].startswith("Vault validation passed:"))
+
+    def test_symlinked_sidecar_is_an_error(self) -> None:
+        real = self.write("elsewhere.json", json.dumps(self.record()))
+        location = ".loreloom/jev/inbox-triage/Inbox/Capture.json"
+        link = self.repo / location
+        link.parent.mkdir(parents=True)
+        try:
+            link.symlink_to(real)
+        except (OSError, NotImplementedError):
+            self.skipTest("symbolic links are unavailable on this platform")
+
+        errors, warnings = validate_vault.jev_sidecar_findings()
+
+        self.assertEqual(warnings, [])
+        self.assertEqual(len(errors), 1)
+        self.assertTrue(errors[0].startswith(f"{location}: "), errors)
+        self.assertIn("symbolic link", errors[0])
+
+    def test_oversized_sidecar_is_an_error(self) -> None:
+        location = ".loreloom/jev/inbox-triage/Inbox/Capture.json"
+        self.write(location, json.dumps(self.record()) + " " * (1024 * 1024))
+
+        errors, _ = validate_vault.jev_sidecar_findings()
+
+        self.assertEqual(len(errors), 1)
+        self.assertTrue(errors[0].startswith(f"{location}: "), errors)
+        self.assertIn("1 MiB", errors[0])
+
+    def test_missing_or_invalid_schema_is_one_error_and_fails_validation(self) -> None:
+        self.write_sidecar(self.record())
+        self.write_sidecar(self.record("claim-support"))
+        schema = self.repo / "schemas" / "jev-advisory.schema.json"
+        for name, content in (
+            ("missing", None),
+            ("not JSON", "{not json"),
+            ("not a schema", '{"type": 7}'),
+        ):
+            with self.subTest(name=name):
+                if content is None:
+                    schema.unlink()
+                else:
+                    schema.write_text(content, encoding="utf-8")
+
+                errors, warnings = validate_vault.jev_sidecar_findings()
+                code, output = self.run_main()
+
+                self.assertEqual(warnings, [])
+                self.assertEqual(len(errors), 1)
+                self.assertTrue(errors[0].startswith(f"{self.SCHEMA}: "), errors)
+                self.assertEqual(code, 1)
+                self.assertIn(errors[0], output)
+
+    def test_malformed_sidecars_are_aggregated_with_other_errors(self) -> None:
+        first = self.write_sidecar(
+            {"schema_version": 1}, ".loreloom/jev/inbox-triage/Inbox/Capture.json"
+        )
+        second = ".loreloom/jev/claim-support/Knowledge/Draft.json"
+        self.write(second, "{not json")
+        self.write("Inbox/Linked.md", "See [[Knowledge/Missing note]].\n")
+
+        code, output = self.run_main()
+
+        self.assertEqual(code, 1)
+        self.assertIn(f"- {first}: ", output)
+        self.assertIn(f"- {second}: ", output)
+        self.assertIn("unresolved wikilink", output)
+
+    def test_output_is_identical_without_sidecars(self) -> None:
+        _, without_directory = self.run_main()
+        (self.repo / ".loreloom" / "jev" / "inbox-triage").mkdir(parents=True)
+        code_empty, with_empty_directory = self.run_main()
+        self.write_sidecar(self.record())
+        code_valid, with_valid_sidecar = self.run_main()
+
+        self.assertEqual(code_empty, 0)
+        self.assertEqual(with_empty_directory, without_directory)
+        self.assertEqual(code_valid, 0)
+        self.assertEqual(with_valid_sidecar, without_directory)
+        self.assertEqual(len(without_directory.splitlines()), 1)
+
+    def test_validation_with_sidecars_opens_no_socket(self) -> None:
+        self.write_sidecar(self.record())
+        self.write_sidecar(self.record("claim-support", "unavailable"))
+
+        with mock.patch.object(
+            socket, "socket", side_effect=AssertionError("validator must stay offline")
+        ), mock.patch.dict(os.environ, {"LORELOOM_JEV_ENABLED": "1"}, clear=False):
+            code, output = self.run_main()
+
+        self.assertEqual(code, 0)
+        self.assertTrue(output.startswith("Vault validation passed:"))
+
+    def test_validator_has_no_network_or_jev_runtime_dependency(self) -> None:
+        source = Path(validate_vault.__file__).read_text(encoding="utf-8")
+        imported: set[str] = set()
+        for node in ast.walk(ast.parse(source)):
+            if isinstance(node, ast.Import):
+                imported.update(alias.name for alias in node.names)
+            elif isinstance(node, ast.ImportFrom):
+                module = node.module or ""
+                imported.add(module)
+                imported.update(f"{module}.{alias.name}" for alias in node.names)
+
+        for forbidden in ("jev_advisory", "scripts.jev_advisory", "socket"):
+            self.assertNotIn(forbidden, imported)
+        self.assertFalse(
+            any(name.split(".")[:2] == ["urllib", "request"] for name in imported)
+        )
+        self.assertFalse(any("jev_advisory" in name for name in imported))
+        self.assertNotIn("JEV_API_KEY", source)
+        self.assertNotIn("LORELOOM_JEV_ENABLED", source)
 
 
 if __name__ == "__main__":

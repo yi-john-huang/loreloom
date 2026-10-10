@@ -21,7 +21,8 @@ description: Transform owner-reviewed Loreloom Source or Daily notes into tracea
     - `paraphrased`: `This claim relies on an owner-reviewed paraphrase. Do not present its wording as a quotation or direct assertion of the original evidence.`
     - `reference-only`: `This Source records an external reference without preserving original bytes in the vault. Recheck the referenced material before relying on exact wording.`
     Retain weaker-source limitations when stronger evidence is also cited by that draft.
-11. Run `uv run --locked python scripts/validate_vault.py`. Its capture-fidelity warnings do not block draft creation, but every warning must be resolved or reported. An owner-approved multi-agent mutation additionally uses the immutable-base change-validator protocol and optional independent reviewer; unavailable requested review requires direct owner review and an incomplete-coverage report.
+11. Optional JEV advisory: only when the owner enabled Jev, run `uv run python scripts/jev_advisory.py claim-support <exact draft paths>` on the drafts from step 9 and report weak-support advisories from `.loreloom/jev/claim-support/` to the owner. The command sends bounded excerpts of each draft and its cited notes to a third-party service, so run it only on paths the owner confirmed. The advisory is not review or approval and decides no disposition, status, or promotion. A disabled or `unavailable` result does not block this skill; continue without it.
+12. Run `uv run --locked python scripts/validate_vault.py`. Its capture-fidelity warnings do not block draft creation, but every warning must be resolved or reported. An owner-approved multi-agent mutation additionally uses the immutable-base change-validator protocol and optional independent reviewer; unavailable requested review requires direct owner review and an incomplete-coverage report.
 
 ## Output
 

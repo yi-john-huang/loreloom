@@ -15,3 +15,6 @@ dev = [
 
 [tool.uv]
 package = false
+
+[tool.loreloom.jev]
+enabled = false

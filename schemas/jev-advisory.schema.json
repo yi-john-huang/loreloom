@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/yi-john-huang/loreloom/schemas/jev-advisory.schema.json",
+  "title": "Loreloom Jev advisory sidecar",
+  "description": "A regenerable, non-authoritative advisory record. It is never a review or an approval.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "advisory_only",
+    "kind",
+    "target",
+    "status",
+    "reason",
+    "generated_at",
+    "input_sha256",
+    "model",
+    "answers"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "advisory_only": { "const": true },
+    "kind": { "enum": ["inbox-triage", "claim-support"] },
+    "target": {
+      "type": "string",
+      "pattern": "^(Inbox|Knowledge)/[^\\\\]+\\.md$",
+      "not": { "pattern": "(^|/)\\.\\.?(/|$)" }
+    },
+    "status": { "enum": ["ok", "unavailable"] },
+    "reason": {
+      "enum": [
+        null,
+        "missing-key",
+        "network-error",
+        "timeout",
+        "http-error",
+        "invalid-json",
+        "invalid-response"
+      ]
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$"
+    },
+    "input_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "model": { "type": ["string", "null"], "minLength": 1 },
+    "unresolved_sources": { "type": "integer", "minimum": 0 },
+    "answers": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/inboxTriageAnswers" },
+        { "$ref": "#/$defs/claimSupportAnswers" }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "ok" } }, "required": ["status"] },
+      "then": {
+        "properties": {
+          "reason": { "const": null },
+          "model": { "type": "string" },
+          "answers": { "not": { "type": "null" } }
+        }
+      },
+      "else": {
+        "properties": {
+          "reason": { "type": "string" },
+          "model": { "const": null },
+          "answers": { "const": null }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "kind": { "const": "inbox-triage" } },
+        "required": ["kind"]
+      },
+      "then": {
+        "properties": {
+          "target": { "pattern": "^Inbox/" },
+          "unresolved_sources": false,
+          "answers": { "not": { "$ref": "#/$defs/claimSupportAnswers" } }
+        }
+      },
+      "else": {
+        "required": ["unresolved_sources"],
+        "properties": {
+          "target": { "pattern": "^Knowledge/" },
+          "answers": { "not": { "$ref": "#/$defs/inboxTriageAnswers" } }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "probability": { "type": "number", "minimum": 0, "maximum": 1 },
+    "optionalProbability": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+    "scoreAnswer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "score", "confidence", "legend", "probabilities"],
+      "properties": {
+        "type": { "const": "score" },
+        "score": { "type": "number", "minimum": 0, "maximum": 4 },
+        "confidence": { "$ref": "#/$defs/optionalProbability" },
+        "legend": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "properties": {
+            "0": { "type": "string" },
+            "1": { "type": "string" },
+            "2": { "type": "string" },
+            "3": { "type": "string" },
+            "4": { "type": "string" }
+          }
+        },
+        "probabilities": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "properties": {
+            "0": { "$ref": "#/$defs/probability" },
+            "1": { "$ref": "#/$defs/probability" },
+            "2": { "$ref": "#/$defs/probability" },
+            "3": { "$ref": "#/$defs/probability" },
+            "4": { "$ref": "#/$defs/probability" }
+          }
+        }
+      }
+    },
+    "noulAnswer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "noul"],
+      "properties": {
+        "type": { "const": "noul" },
+        "noul": { "$ref": "#/$defs/probability" }
+      }
+    },
+    "kindAnswer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "choice", "confidence", "probabilities"],
+      "properties": {
+        "type": { "const": "choice" },
+        "choice": { "enum": ["source-candidate", "idea", "task", "reference", "noise"] },
+        "confidence": { "$ref": "#/$defs/optionalProbability" },
+        "probabilities": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "properties": {
+            "source-candidate": { "$ref": "#/$defs/probability" },
+            "idea": { "$ref": "#/$defs/probability" },
+            "task": { "$ref": "#/$defs/probability" },
+            "reference": { "$ref": "#/$defs/probability" },
+            "noise": { "$ref": "#/$defs/probability" }
+          }
+        }
+      }
+    },
+    "inboxTriageAnswers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["promotion_value", "noise", "kind"],
+      "properties": {
+        "promotion_value": { "$ref": "#/$defs/scoreAnswer" },
+        "noise": { "$ref": "#/$defs/noulAnswer" },
+        "kind": { "$ref": "#/$defs/kindAnswer" }
+      }
+    },
+    "claimSupportAnswers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claims_supported", "citation_quality"],
+      "properties": {
+        "claims_supported": { "$ref": "#/$defs/noulAnswer" },
+        "citation_quality": { "$ref": "#/$defs/scoreAnswer" }
+      }
+    }
+  }
+}

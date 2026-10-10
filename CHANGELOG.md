@@ -18,6 +18,7 @@ The format is based on Keep a Changelog, and the project follows semantic versio
 - Repository skills for capture triage, source distillation, cross-topic linking, Wiki regeneration, vault auditing, and multi-agent routing.
 - Multi-agent model, safety, and single-writer guidance.
 - Diff-aware, snapshot-bound mutation guardrails, protected human-approval receipts, and adversarial validator tests.
+- Optional, default-OFF Jev advisory helper (`scripts/jev_advisory.py`) for Inbox triage and draft Concept claim support, with local schema-validated sidecars under the gitignored `.loreloom/jev/`. Advisories never change notes, review state, or approvals.
 
 ### Changed
 

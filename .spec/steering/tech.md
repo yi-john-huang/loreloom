@@ -83,9 +83,16 @@ The complete cross-platform environment is pinned in `uv.lock`. When intentional
 - Wiki Knowledge inputs, review state, and human-block markers;
 - unresolved or ambiguous Obsidian wikilinks;
 - private/runtime-file hygiene;
-- tracked project-agent configuration and repository skill metadata.
+- tracked project-agent configuration and repository skill metadata;
+- existing Jev advisory sidecars under `.loreloom/jev/` against `schemas/jev-advisory.schema.json`, offline and only when a sidecar exists.
 
 Ignored local SDD tooling is deliberately excluded from repository agent/skill validation.
+
+### Optional Jev Advisory Helper
+
+`scripts/jev_advisory.py` is a standard-library-only, default-OFF command. When the owner enables it (`[tool.loreloom.jev] enabled` or `LORELOOM_JEV_ENABLED`), it sends bounded excerpts of owner-selected notes to the third-party Jev decision API and writes advisory sidecars under the gitignored `.loreloom/jev/`. It reads the key only from the `JEV_API_KEY` environment variable, makes one request per note without retry, never follows redirects, and never writes a note. A failed request exits `0` with an `unavailable` reason code and keeps an earlier `ok` sidecar when the input hash is unchanged.
+
+`schemas/jev-advisory.schema.json` defines the sidecar. `tests/test_jev_advisory.py` covers the helper with a mocked transport and a socket guard; no test contacts the network.
 
 ### Advanced Change Validator
 
@@ -148,7 +155,7 @@ Never regenerate the preflight snapshot after work begins or change the final al
 ## Testing and Quality Gates
 
 - GitHub Actions retains the full Ubuntu Python 3.13 validator and guardrail job.
-- A core portability matrix runs the doctor and core validator tests on Ubuntu, macOS, and Windows with Python 3.11 and 3.13; native Windows does not run the POSIX guarded-change suite.
+- A core portability matrix runs the doctor, core validator tests, and Jev advisory helper tests on Ubuntu, macOS, and Windows with Python 3.11 and 3.13; native Windows does not run the POSIX guarded-change suite.
 - Tests use temporary Git repositories and filesystem fixtures to verify real boundary behavior.
 - Add regression coverage with every schema, doctor, validator, policy-enforcement, or approval-flow change.
 - No linter, static type checker, coverage threshold, development server, or build command is currently configured; do not invent one in requirements or task plans.

@@ -148,6 +148,20 @@ For **advanced owner-approved multi-agent changes**, `scripts/validate_change.py
 
 GitHub Actions runs the vault validator and adversarial guardrail tests on pushes and pull requests.
 
+### Optional Jev advisory (default OFF)
+
+`scripts/jev_advisory.py` can ask the third-party TypeSafe Jev decision API to rank Inbox captures (`inbox-triage`) and to flag weakly supported claims in draft Concepts (`claim-support`). It is advisory only: it never edits a note and never changes review or evergreen state.
+
+The feature is OFF until you opt in:
+
+| Setting | Where | Effect |
+|---|---|---|
+| `enabled` under `[tool.loreloom.jev]` | `pyproject.toml` | Committed default is `false`. |
+| `LORELOOM_JEV_ENABLED` | Environment | `1`, `true`, `yes`, or `on` enables; `0`, `false`, `no`, or `off` disables. It overrides `pyproject.toml`. |
+| `JEV_API_KEY` | Environment only | The Jev key. Never store it in the repository. |
+
+Prefer the environment variable so the committed default stays OFF. When the feature is OFF, the command prints `Jev advisory is disabled` and the validator and doctor behave exactly as before. Optional `timeout_seconds` (default `20`) and `max_excerpt_chars` (default `4000`) keys tune the same table. Read [Agent workflows](docs/AGENT_WORKFLOWS.md) for the commands and [Privacy](docs/PRIVACY.md) for what leaves your machine.
+
 ### Python toolchain
 
 - `.python-version` selects Python 3.13.

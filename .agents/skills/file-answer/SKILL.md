@@ -9,7 +9,7 @@ Turn the answer that the owner wants to keep into one synthesis page.
 
 ## Steps
 
-1. Read `CLAUDE.md` and `index.md`. Read `docs/output-clarity-ladder.md` before you write prose.
+1. Read `CLAUDE.md` and `index.md`. Read the sdd-mcp `output-clarity-ladder` skill (`~/.claude/skills/output-clarity-ladder/SKILL.md`; source: https://github.com/yi-john-huang/sdd-mcp/blob/master/skills/output-clarity-ladder/SKILL.md) before you write prose. For Traditional Chinese prose, also read its `references/zh-TW.md`.
 2. Identify the answer to file. Use the most recent answer unless the owner names another one. Keep its claims and citations. Do not add new claims.
 3. Check `index.md` and `Wiki/synthesis/` for a page that answers the same question. Update that page when one exists and it does not have `status: evergreen` or `reviewed_by: owner`. Otherwise create a new page.
 4. Write `Wiki/synthesis/<Title>.md`. Use a short title that names the question or topic. Use this shape:
@@ -40,7 +40,7 @@ Turn the answer that the owner wants to keep into one synthesis page.
 
    - `sources` lists every Wiki page and Source that the answer cites. A synthesis page with no sources stays a draft.
    - `confidence` is no higher than the lowest confidence among the pages that the answer relies on.
-   - Rewrite the answer so that it follows `docs/output-clarity-ladder.md`. Keep every number, condition, and uncertainty.
+   - Rewrite the answer so that it follows the `output-clarity-ladder` skill. Keep every number, condition, and uncertainty.
    - Remove any statement that was marked "not from the vault", or keep it under `## Limits` with that label.
 5. Run the gate and set the status from the result:
 

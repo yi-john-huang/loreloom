@@ -13,7 +13,7 @@ Answer one question from the vault and show where each claim comes from.
 2. Pick the pages in `index.md` that relate to the question. Read each one completely.
 3. Follow wikilinks one step when a page points to a closer answer. When the index has no match, search `Wiki/` and then `Knowledge/` for the key terms and their synonyms.
 4. Open the cited file in `Sources/` when a claim is a number, a date, a quotation, or the base of the answer. Check the claim against the raw text.
-5. Write the answer. Follow `docs/output-clarity-ladder.md`: one idea per sentence, short sentences, active voice, and one word for one thing. Use a table or a diagram when the question is a comparison or a flow.
+5. Write the answer. Follow the sdd-mcp `output-clarity-ladder` skill (`~/.claude/skills/output-clarity-ladder/SKILL.md`; source: https://github.com/yi-john-huang/sdd-mcp/blob/master/skills/output-clarity-ladder/SKILL.md): one idea per sentence, short sentences, active voice, and one word for one thing. Use a table or a diagram when the question is a comparison or a flow.
 6. Cite every claim with a wikilink to the Wiki page or the Source, for example `[[Wiki/concepts/My concept]]`.
 7. State the limits of the answer.
    - Name each page you used that has `status: draft` or `confidence: low`.

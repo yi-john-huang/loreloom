@@ -23,7 +23,7 @@ The format is based on Keep a Changelog, and the project follows semantic versio
 - Lightweight agent-first flow as the default: root `CLAUDE.md`, `index.md`, `log.md`, and `Wiki/sources`, `entities`, `concepts`, `synthesis`, and `_review` sections with six-field page frontmatter (`schemas/wiki-page.schema.json`, `Templates/Wiki page.md`).
 - `ingest`, `query`, `file-answer`, and `lint` skills, plus the read-only helpers `scripts/ingest_gate.py` (auto-accept rule) and `scripts/lint_wiki.py` (Wiki health report).
 - `scripts/migrate_knowledge_to_wiki.py` (dry run by default, `--apply` to write) and `docs/migration-lightweight.md` for gradual migration of `Knowledge/` notes.
-- `docs/output-clarity-ladder.md` as the writing style for Wiki prose, and a "Scope of use" section in `README.md` and `CLAUDE.md`.
+- A pointer to the sdd-mcp [`output-clarity-ladder` skill](https://github.com/yi-john-huang/sdd-mcp/blob/master/skills/output-clarity-ladder/SKILL.md) (installed with `npx -y sdd-mcp-server@latest setup-global`) as the writing style for Wiki prose, with its `references/zh-TW.md` for Traditional Chinese. The repository keeps no copy of the skill. Also a "Scope of use" section in `README.md` and `CLAUDE.md`.
 
 ### Changed
 

@@ -112,7 +112,7 @@ Lightweight flow (default):
 4. **Index and history** — `index.md` lists every Wiki page outside the review queue and is read first; `log.md` is the append-only history and review record.
 5. **Read-only health report** — `lint` reports broken links, orphans, unindexed pages, contradictions, gate failures, low-confidence pages, the review backlog, and stale pages.
 6. **Immutable evidence** — agents may add a raw file to `Sources/` but never change an existing file in `Sources/` or `Assets/`.
-7. **Clear prose** — all Wiki prose follows `docs/output-clarity-ladder.md`.
+7. **Clear prose** — all Wiki prose follows the sdd-mcp [`output-clarity-ladder` skill](https://github.com/yi-john-huang/sdd-mcp/blob/master/skills/output-clarity-ladder/SKILL.md). The repository keeps no copy of it.
 
 Strict mode and shared foundations:
 

@@ -105,7 +105,13 @@ Answer from the vault and cite each claim with a wikilink. After a good answer, 
 
 ## Writing style
 
-All Wiki prose must follow [docs/output-clarity-ladder.md](docs/output-clarity-ladder.md). Read it before you write a page. The main points:
+All Wiki prose must follow the sdd-mcp `output-clarity-ladder` skill. Read it before you write a page. This repository keeps no copy of the skill.
+
+- Install: `npx -y sdd-mcp-server@latest setup-global`. This command installs the Claude Code skill `output-clarity-ladder` at `~/.claude/skills/output-clarity-ladder/SKILL.md`, with `references/zh-TW.md` (Traditional Chinese) and `references/ja.md` (Japanese).
+- Source: [skills/output-clarity-ladder/SKILL.md](https://github.com/yi-john-huang/sdd-mcp/blob/master/skills/output-clarity-ladder/SKILL.md). The language references are in [references/](https://github.com/yi-john-huang/sdd-mcp/tree/master/skills/output-clarity-ladder/references).
+- Wiki prose in Traditional Chinese follows the zh-TW reference (`references/zh-TW.md`).
+
+The main points:
 
 - Use the owner's language. Keep technical names in their usual form.
 - Put one idea in each sentence. Prefer short sentences and active voice.

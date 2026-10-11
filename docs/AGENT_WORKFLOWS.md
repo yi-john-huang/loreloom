@@ -17,7 +17,7 @@ Auto-accept rule: a page gets `status: reviewed` directly when `confidence` is `
 
 An ingest handles one source. A small batch of related sources is allowed when the owner asks; each source gets its own `log.md` entry and the agent reports one change summary.
 
-Wiki prose follows the [Output clarity ladder](output-clarity-ladder.md).
+Wiki prose follows the sdd-mcp [`output-clarity-ladder` skill](https://github.com/yi-john-huang/sdd-mcp/blob/master/skills/output-clarity-ladder/SKILL.md). `npx -y sdd-mcp-server@latest setup-global` installs it at `~/.claude/skills/output-clarity-ladder/SKILL.md`.
 
 After each write the agent runs `uv run --locked python scripts/validate_vault.py --mode daily`.
 

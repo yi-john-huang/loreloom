@@ -45,4 +45,4 @@ Produce one report on the state of the Wiki. Change nothing during the report pa
 
 ## Output
 
-Give the report, the recommended repairs, and the question of which repairs to apply. State plainly when there are no findings. Follow `docs/output-clarity-ladder.md` in the report text.
+Give the report, the recommended repairs, and the question of which repairs to apply. State plainly when there are no findings. Follow the sdd-mcp `output-clarity-ladder` skill (`~/.claude/skills/output-clarity-ladder/SKILL.md`; source: https://github.com/yi-john-huang/sdd-mcp/blob/master/skills/output-clarity-ladder/SKILL.md) in the report text.

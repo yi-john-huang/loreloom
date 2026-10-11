@@ -50,7 +50,7 @@ Source (file in Sources/ or Assets/, URL, pasted text, Inbox capture)
 | File answer | "file it" | The agent saves the answer as one page in `Wiki/synthesis/` and links it from related pages. |
 | Lint | "lint the wiki" | The agent reports orphan pages, broken links, stale pages, contradictions, low-confidence pages, and the review backlog. It changes nothing without approval. |
 
-The full rules are in [CLAUDE.md](CLAUDE.md). The four skills are in `.agents/skills/ingest`, `query`, `file-answer`, and `lint`. Agents write Wiki prose in the plain style of the [Output clarity ladder](docs/output-clarity-ladder.md).
+The full rules are in [CLAUDE.md](CLAUDE.md). The four skills are in `.agents/skills/ingest`, `query`, `file-answer`, and `lint`. Agents write Wiki prose in the plain style of the sdd-mcp [`output-clarity-ladder` skill](https://github.com/yi-john-huang/sdd-mcp/blob/master/skills/output-clarity-ladder/SKILL.md). Install it with `npx -y sdd-mcp-server@latest setup-global`.
 
 ### Lightweight flow or strict mode?
 
@@ -274,7 +274,7 @@ Prefer the environment variable so the committed default stays OFF. When the fea
 
 - [Agent guide for the lightweight flow](CLAUDE.md)
 - [Migrating to the lightweight flow](docs/migration-lightweight.md)
-- [Output clarity ladder](docs/output-clarity-ladder.md)
+- [Output clarity ladder (sdd-mcp skill)](https://github.com/yi-john-huang/sdd-mcp/blob/master/skills/output-clarity-ladder/SKILL.md)
 - [Build your personal vault (strict mode)](docs/BUILD_YOUR_VAULT.md)
 - [Getting started](docs/GETTING_STARTED.md)
 - [Architecture and lifecycle](docs/ARCHITECTURE.md)

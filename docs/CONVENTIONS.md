@@ -6,7 +6,8 @@
 - Link with the full path, for example `[[Wiki/sources/Examples/AWS IAM roles summary]]`.
 - Give every page one line in `index.md`: the wikilink, a dash, and a one-sentence summary.
 - Record a conflict in a `## Contradictions` section and in the `contradicts` frontmatter list. Do not overwrite the older claim.
-- Write prose that follows the [Output clarity ladder](output-clarity-ladder.md): one idea per sentence, short sentences, active voice, one word for one thing, and no dropped numbers, conditions, or uncertainty.
+- Write prose that follows the sdd-mcp [`output-clarity-ladder` skill](https://github.com/yi-john-huang/sdd-mcp/blob/master/skills/output-clarity-ladder/SKILL.md): one idea per sentence, short sentences, active voice, one word for one thing, and no dropped numbers, conditions, or uncertainty. `npx -y sdd-mcp-server@latest setup-global` installs the skill at `~/.claude/skills/output-clarity-ladder/SKILL.md`. The repository keeps no copy.
+- Write Wiki prose in Traditional Chinese to the skill's zh-TW reference, [`references/zh-TW.md`](https://github.com/yi-john-huang/sdd-mcp/tree/master/skills/output-clarity-ladder/references). The Japanese reference is `references/ja.md`.
 - Append to `log.md`; never rewrite an old entry. Heading format: `## [YYYY-MM-DD] action | subject`.
 
 The remaining conventions apply to every note unless a section names strict mode.

@@ -49,7 +49,6 @@ loreloom/
 │   ├── test_lightweight_flow.py
 │   └── test_jev_advisory.py
 ├── docs/                  # Architecture, conventions, privacy, and workflows
-│   ├── output-clarity-ladder.md   # Writing rule for all Wiki prose
 │   └── migration-lightweight.md   # Moving a strict vault to the lightweight flow
 ├── .agents/
 │   ├── policies/          # Standing authority and safety rules
@@ -111,7 +110,7 @@ Only `.spec/steering/` supplies shared project context. Other locally generated 
 - Every page in a `Wiki/` section begins with the six fields in `schemas/wiki-page.schema.json`: `title`, `type`, `status`, `confidence`, `sources`, and `updated`. Optional fields are `reviewed_by`, `contradicts`, `tags`, `aliases`, and `agent`. `Templates/Wiki page.md` is the scaffold.
 - Wiki `sources` holds wikilinks to `Sources/`, `Daily/`, or `Assets/`, or an absolute HTTP(S) URL. A synthesis page may also cite Wiki pages.
 - Record a conflict in a `## Contradictions` section and in the `contradicts` list; do not overwrite the old claim.
-- Write all Wiki prose to `docs/output-clarity-ladder.md`: one idea per sentence, short active sentences with a named actor, one word for one thing, and every number, condition, and uncertainty kept.
+- Write all Wiki prose to the sdd-mcp [`output-clarity-ladder` skill](https://github.com/yi-john-huang/sdd-mcp/blob/master/skills/output-clarity-ladder/SKILL.md) (installed at `~/.claude/skills/output-clarity-ladder/SKILL.md`; the repository keeps no copy): one idea per sentence, short active sentences with a named actor, one word for one thing, and every number, condition, and uncertainty kept.
 - Use established lowercase `snake_case` fields such as `generated_at` and `review_status`.
 - Use ISO 8601 calendar dates and lowercase tags with `/` hierarchy.
 - Use `null` for unknown dates or links and `[]` for empty lists.

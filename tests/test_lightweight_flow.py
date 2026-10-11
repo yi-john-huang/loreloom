@@ -615,6 +615,12 @@ class DoctorModeTests(VaultTestCase):
         self.assertTrue(any("vault-validation" in line for line in lines), lines)
 
 
+CLARITY_SKILL_URL = (
+    "https://github.com/yi-john-huang/sdd-mcp/blob/master/"
+    "skills/output-clarity-ladder/SKILL.md"
+)
+
+
 class RepositoryContractTests(unittest.TestCase):
     def read(self, relative_path: str) -> str:
         return (REPOSITORY / relative_path).read_text(encoding="utf-8")
@@ -625,7 +631,9 @@ class RepositoryContractTests(unittest.TestCase):
                 text = self.read(f".agents/skills/{name}/SKILL.md")
                 self.assertIn(f"name: {name}\n", text)
                 self.assertIn("index.md", text)
-                self.assertIn("docs/output-clarity-ladder.md", text)
+                self.assertIn("`output-clarity-ladder` skill", text)
+                self.assertIn(CLARITY_SKILL_URL, text)
+                self.assertNotIn("docs/output-clarity-ladder.md", text)
                 self.assertIn(
                     f"${name}", self.read(f".agents/skills/{name}/agents/openai.yaml")
                 )
@@ -646,10 +654,13 @@ class RepositoryContractTests(unittest.TestCase):
         for text in (claude, readme):
             self.assertIn("使用範圍 / Scope of use", text)
         self.assertIn("CLAUDE.md", agents)
-        self.assertIn("docs/output-clarity-ladder.md", claude)
+        self.assertIn("`output-clarity-ladder` skill", claude)
+        self.assertIn(CLARITY_SKILL_URL, claude)
+        self.assertIn("zh-TW", claude)
+        self.assertNotIn("docs/output-clarity-ladder.md", claude)
         self.assertIn("Wiki/_review/", claude)
         self.assertIn("Wiki/synthesis/", claude)
-        self.assertIn("Output clarity ladder", self.read("docs/output-clarity-ladder.md"))
+        self.assertFalse((REPOSITORY / "docs" / "output-clarity-ladder.md").exists())
         for name in ("index.md", "log.md", "docs/migration-lightweight.md"):
             self.assertTrue((REPOSITORY / name).is_file(), name)
 

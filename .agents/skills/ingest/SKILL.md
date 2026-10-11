@@ -17,7 +17,7 @@ The owner names one of these:
 
 ## Steps
 
-1. Read `CLAUDE.md`, then `index.md`, then the last entries of `log.md`. Read `docs/output-clarity-ladder.md` before you write prose.
+1. Read `CLAUDE.md`, then `index.md`, then the last entries of `log.md`. Read the sdd-mcp `output-clarity-ladder` skill (`~/.claude/skills/output-clarity-ladder/SKILL.md`; source: https://github.com/yi-john-huang/sdd-mcp/blob/master/skills/output-clarity-ladder/SKILL.md) before you write prose. For Traditional Chinese prose, also read its `references/zh-TW.md`.
 2. Make sure the raw evidence is in the vault.
    - A file that is already in `Sources/` or `Assets/`: use it as it is.
    - A URL, pasted text, or `Inbox/` capture: create one new file `Sources/<Title>.md`. Start it with frontmatter that holds `title`, `source_url` (or `inbox_source`), and `captured: YYYY-MM-DD`. Put the captured text below, unchanged. Fetch a URL only when the owner gave it in this request. Do not store full copyrighted text in a public repository; store the link and a short excerpt.
@@ -60,7 +60,7 @@ The owner names one of these:
 
 ## Writing rule
 
-All Wiki prose follows `docs/output-clarity-ladder.md`: one idea per sentence, short sentences, active voice, one word for one thing, and no dropped numbers, conditions, or uncertainty.
+All Wiki prose follows the `output-clarity-ladder` skill: one idea per sentence, short sentences, active voice, one word for one thing, and no dropped numbers, conditions, or uncertainty.
 
 ## Output
 

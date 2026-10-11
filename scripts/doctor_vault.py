@@ -273,15 +273,69 @@ def _obsidian_check(root: Path) -> Check:
     return Check("PASS", "obsidian-settings", "portable Obsidian defaults are ready")
 
 
+def _configured_mode(root: Path, validator) -> tuple[str | None, str]:
+    original_root = validator.ROOT
+    try:
+        validator.ROOT = root
+        return validator.configured_validation_mode()
+    finally:
+        validator.ROOT = original_root
+
+
+def _mode_check(root: Path, validator) -> Check:
+    if validator is None:
+        return Check("FAIL", "validation-mode", "validation dependencies are unavailable")
+    mode, origin = _configured_mode(root, validator)
+    if mode is None:
+        return Check(
+            "FAIL",
+            "validation-mode",
+            f"invalid mode from {origin}; use one of: {', '.join(validator.VALIDATION_MODES)}",
+        )
+    if mode == "strict":
+        advice = (
+            "strict runs every governance check; use daily for a personal vault "
+            "that follows the lightweight flow"
+        )
+    else:
+        advice = (
+            "daily fits the lightweight personal flow; run "
+            "'validate_vault.py --mode strict' before you publish or when you "
+            "need signed review, Asset hashes, and claim checks"
+        )
+    return Check("PASS", "validation-mode", f"{mode} (from {origin}); {advice}")
+
+
+def _light_layout_check(root: Path, validator) -> Check:
+    if validator is None:
+        return Check("WARN", "lightweight-layout", "validation dependencies are unavailable")
+    expected = [validator.WIKI_INDEX_NAME, validator.WIKI_LOG_NAME]
+    expected.extend(
+        f"{validator.WIKI_ROOT}/{section}"
+        for section in (*validator.WIKI_SECTION_TYPES, validator.WIKI_REVIEW_SECTION)
+    )
+    missing = [item for item in expected if not (root / item).exists()]
+    if missing:
+        return Check(
+            "WARN",
+            "lightweight-layout",
+            "the lightweight flow needs: " + ", ".join(missing),
+        )
+    return Check("PASS", "lightweight-layout", "index.md, log.md, and Wiki sections exist")
+
+
 def _validation_check(root: Path, validator) -> Check:
     if validator is None:
         return Check("FAIL", "vault-validation", "validation dependencies are unavailable")
+    mode, _ = _configured_mode(root, validator)
+    if mode is None:
+        return Check("FAIL", "vault-validation", "the configured validation mode is invalid")
     original_root = validator.ROOT
     captured = io.StringIO()
     try:
         validator.ROOT = root
         with contextlib.redirect_stdout(captured):
-            result = validator.main()
+            result = validator.main(["--mode", mode])
     except (OSError, SystemExit):
         result = 1
     finally:
@@ -290,7 +344,11 @@ def _validation_check(root: Path, validator) -> Check:
     if result == 0:
         detail = lines[-1] if lines else "vault validation passed"
         return Check("PASS", "vault-validation", detail)
-    return Check("FAIL", "vault-validation", "failed; run 'uv run --locked python scripts/validate_vault.py' for full path-specific errors")
+    return Check(
+        "FAIL",
+        "vault-validation",
+        f"failed in {mode} mode; run 'uv run --locked python scripts/validate_vault.py --mode {mode}' for full path-specific errors",
+    )
 
 
 def core_checks(root: Path) -> list[Check]:
@@ -306,6 +364,8 @@ def core_checks(root: Path) -> list[Check]:
         _dependency_check(root),
         _origin_check(root),
         _obsidian_check(root),
+        _light_layout_check(root, validator),
+        _mode_check(root, validator),
         _validation_check(root, validator),
     ]
 

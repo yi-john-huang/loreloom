@@ -1,9 +1,11 @@
 ---
 name: triage-vault-inbox
-description: Classify unprocessed Loreloom Inbox captures and propose safe dispositions. Use when reviewing one or more files under Inbox, detecting duplicates, identifying provenance, or deciding whether a capture belongs in Sources, Knowledge, Projects, Areas, deferred work, or Archive. Starts read-only and never deletes or moves notes without exact approval.
+description: Strict-mode (optional) skill; the default lightweight path ingests a capture directly with the ingest skill. Classify unprocessed Loreloom Inbox captures and propose safe dispositions. Use when reviewing one or more files under Inbox, detecting duplicates, identifying provenance, or deciding whether a capture belongs in Sources, Knowledge, Projects, Areas, deferred work, or Archive. Starts read-only and never deletes or moves notes without exact approval.
 ---
 
 # Triage Vault Inbox
+
+> Strict mode (optional). The default lightweight flow in `CLAUDE.md` ingests a capture directly with `$ingest`. Use this skill when the owner asks for strict mode or names this skill.
 
 ## Workflow
 
@@ -16,7 +18,7 @@ description: Classify unprocessed Loreloom Inbox captures and propose safe dispo
 7. Separate objective facts from inference and identify missing provenance.
 8. Stop for approval before creating, moving, archiving, or deleting anything.
 9. If edits are approved, let the root agent update only exact authorized processing metadata and drafts.
-10. Run `uv run --locked python scripts/validate_vault.py`. An owner-approved multi-agent mutation additionally uses the immutable-base change-validator protocol.
+10. Run `uv run --locked python scripts/validate_vault.py --mode strict`. An owner-approved multi-agent mutation additionally uses the immutable-base change-validator protocol.
 
 ## Output
 

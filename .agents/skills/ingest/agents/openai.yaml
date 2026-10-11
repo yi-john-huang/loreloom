@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ingest"
+  short_description: "Turn one source into Wiki pages"
+  default_prompt: "Use $ingest to add the selected source to the Wiki, then update index.md and log.md."

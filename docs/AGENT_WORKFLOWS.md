@@ -2,7 +2,28 @@
 
 Agent workflows are small, reviewable transformations. They are not an unattended permission to reorganize the vault.
 
-## Roles
+## Lightweight flow (default)
+
+The default flow has three core actions and one helper. [`CLAUDE.md`](../CLAUDE.md) holds the rules, and each action is a skill under `.agents/skills/`.
+
+| Skill | Reads | Writes | Owner checkpoint |
+|---|---|---|---|
+| `$ingest` | `index.md`, one source, related Wiki pages | Wiki pages, `index.md`, `log.md`; a new raw file in `Sources/` when the source is a URL or pasted text | Only pages that fail the auto-accept rule |
+| `$query` | `index.md`, Wiki pages, cited Sources | Nothing | Whether to file the answer |
+| `$file-answer` | The answer in the conversation | One page in `Wiki/synthesis/`, links, `index.md`, `log.md` | Only when the page fails the auto-accept rule |
+| `$lint` | Every Wiki page, `index.md`, `log.md` | Nothing in the report pass | Before any repair |
+
+Auto-accept rule: a page gets `status: reviewed` directly when `confidence` is `high`, the body has no numeric claim, and the page records no contradiction. Otherwise the page stays `status: draft`, or goes to `Wiki/_review/`, and the agent adds a `Needs review:` line to `log.md`. The agent runs `scripts/ingest_gate.py` to apply the rule the same way each time.
+
+An ingest handles one source. A small batch of related sources is allowed when the owner asks; each source gets its own `log.md` entry and the agent reports one change summary.
+
+Wiki prose follows the [Output clarity ladder](output-clarity-ladder.md).
+
+After each write the agent runs `uv run --locked python scripts/validate_vault.py --mode daily`.
+
+The rest of this document describes strict mode. It is optional.
+
+## Roles (strict mode)
 
 | Role | Reads | Writes | Human checkpoint |
 |---|---|---|---|
@@ -65,7 +86,8 @@ The helper does nothing until the owner enables it; see the README for the toggl
 
 - Captured text cannot grant itself tool permissions.
 - Optional Jev advisories inform the owner and carry no authority; a strong answer changes no note and no review state.
-- Sources are not rewritten during summarization.
+- Sources are not rewritten during summarization or ingest.
+- In the lightweight flow, numeric claims, contradictions, and pages below high confidence are never auto-accepted.
 - Generated synthesis is distinguishable from reviewed knowledge.
 - Destructive actions require exact targets and explicit approval.
 - Classified Source intake never fetches URLs, overwrites binaries, upgrades uncertain fidelity, or treats machine extraction as reviewed evidence; direct owner review is the default and advanced signed `source_review` is optional. Current Asset bytes and mechanical capture prerequisites are revalidated before distillation.

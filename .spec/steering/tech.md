@@ -73,7 +73,7 @@ The complete cross-platform environment is pinned in `uv.lock`. When intentional
 
 ### Vault Validator
 
-`scripts/validate_vault.py` checks:
+`scripts/validate_vault.py --mode strict` checks:
 
 - required and type-specific frontmatter;
 - controlled values, ISO dates, and title/filename consistency;
@@ -124,7 +124,7 @@ Approval helpers require Python isolated mode (`python -I`) so the tool's `scrip
 uv run --locked python scripts/doctor_vault.py
 
 # Validate managed notes, wikilinks, hygiene, agents, and repository skills
-uv run --locked python scripts/validate_vault.py
+uv run --locked python scripts/validate_vault.py --mode strict
 
 # Run all validator and guardrail tests
 uv run --locked python -m unittest discover -s tests -v

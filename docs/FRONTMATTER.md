@@ -1,6 +1,53 @@
 # Frontmatter schemas
 
-Every managed note begins with YAML frontmatter. The machine-readable contract is in [`schemas/frontmatter.schema.json`](../schemas/frontmatter.schema.json).
+Loreloom has two frontmatter contracts:
+
+- **Lightweight Wiki pages** under `Wiki/sources/`, `Wiki/entities/`, `Wiki/concepts/`, `Wiki/synthesis/`, and `Wiki/_review/` use six required fields. Both validator modes check them. The contract is in [`schemas/wiki-page.schema.json`](../schemas/wiki-page.schema.json).
+- **Lifecycle notes** everywhere else use the full contract in [`schemas/frontmatter.schema.json`](../schemas/frontmatter.schema.json). Strict mode checks all of it. Daily mode checks only that `type`, `title`, and `status` exist, that `type` matches the folder, and that `created` and `updated` are dates when present. Daily mode accepts any Markdown file in `Sources/`, with or without frontmatter.
+
+## Lightweight Wiki pages
+
+```yaml
+---
+title: Page title
+type: source|entity|concept|synthesis
+status: draft|reviewed|evergreen
+confidence: high|medium|low
+sources:
+  - "[[Sources/Raw file name]]"
+updated: YYYY-MM-DD
+---
+```
+
+| Field | Required | Meaning |
+|---|---:|---|
+| `title` | yes | Display name. Strict mode requires it to match the file name |
+| `type` | yes | `source`, `entity`, `concept`, or `synthesis`; it must match the section folder. A page in `Wiki/_review/` may use any of the four |
+| `status` | yes | `draft`, `reviewed`, or `evergreen`. New pages start as `draft`. The auto-accept rule may set `reviewed`. Only the owner sets `evergreen` |
+| `confidence` | yes | `high`: the source states the claim and the vault holds the source text. `medium`: the source is a paraphrase, an excerpt, or a reference only. `low`: the claim is an inference |
+| `sources` | yes | List of wikilinks or absolute HTTP(S) URLs. It may be empty only on a `draft` page |
+| `updated` | yes | Date of the last material edit, `YYYY-MM-DD` |
+| `reviewed_by` | no | `agent` when the auto-accept rule set `reviewed`; `owner` when the owner reviewed the page. Agents never edit a page marked `owner` |
+| `contradicts` | no | List of pages or sources that this page conflicts with. A non-empty list sends the page to review |
+| `migrated_from` | no | Path of the Knowledge note that the migration script copied |
+
+Other fields such as `tags`, `aliases`, `created`, and `agent` are allowed.
+
+Rules that both modes enforce:
+
+- a page in `Wiki/_review/` keeps `status: draft`;
+- a `reviewed` or `evergreen` page has at least one source;
+- every `sources` entry is a wikilink or an HTTP(S) URL, and every wikilink resolves.
+
+Rules that only strict mode adds:
+
+- `title` matches the file name;
+- a wikilink source points to `Sources/`, `Daily/`, or `Assets/`; a synthesis page may also cite `Wiki/` pages;
+- a `reviewed` or `evergreen` page cites only owner-reviewed Sources.
+
+The auto-accept rule is in [`CLAUDE.md`](../CLAUDE.md). `scripts/ingest_gate.py` applies it.
+
+The rest of this document describes lifecycle notes. Strict mode enforces it.
 
 ## Common fields
 
@@ -105,7 +152,7 @@ The validator ignores fenced code and treats blank values, `None`, `N/A`, HTML c
 
 #### Manual migration
 
-Inventory legacy Sources by running `uv run --locked python scripts/validate_vault.py`; missing-field diagnostics name both fields and state that no value was inferred. For each Source, inspect the original evidence, add `capture_method` and `capture_mode`, update `updated`, and complete the Capture Boundary. For a reviewed Source, append a dated Amendment recording the classification and its evidence basis. Use `capture_mode: unknown` when fidelity cannot be established. If the intake method itself is ambiguous, the owner must classify it rather than accepting an invented value. Agents must not bulk-rewrite legacy personal Sources, and there is intentionally no automatic migration script.
+Inventory legacy Sources by running `uv run --locked python scripts/validate_vault.py --mode strict`; missing-field diagnostics name both fields and state that no value was inferred. For each Source, inspect the original evidence, add `capture_method` and `capture_mode`, update `updated`, and complete the Capture Boundary. For a reviewed Source, append a dated Amendment recording the classification and its evidence basis. Use `capture_mode: unknown` when fidelity cannot be established. If the intake method itself is ambiguous, the owner must classify it rather than accepting an invented value. Agents must not bulk-rewrite legacy personal Sources, and there is intentionally no automatic migration script.
 
 Body references to bound Assets may use Obsidian embeds or links. For filenames containing spaces, use `![[Assets/report file.pdf]]`, `[[Assets/report file.pdf]]`, `[report](<Assets/report file.pdf>)`, or percent-encoded destinations such as `[report](Assets/report%20file.pdf)`; raw unbracketed spaces and Markdown link titles are unsupported.
 
@@ -121,7 +168,9 @@ Only a human may set `status: evergreen` and a non-null `reviewed` date.
 
 When a draft or evergreen Concept cites a Source whose `capture_mode` is `unknown`, `paraphrased`, or `reference-only`, retain a non-empty `## Evidence limitations` section. The validator warns without failing when it is absent and emits a stronger warning when an evergreen Concept relies exclusively on those modes. A Daily citation or a stronger Source suppresses only the exclusive-evidence warning. Human-only evergreen promotion plus review of the retained section is the acceptance mechanism; there is no separate acceptance field.
 
-### Wiki
+### Wiki (legacy generated pages)
+
+These fields apply to `type: wiki` pages that sit directly under `Wiki/`, outside the five lightweight sections.
 
 - `generated`: must be `true`
 - `generated_at`: `YYYY-MM-DD`

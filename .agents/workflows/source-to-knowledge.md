@@ -14,7 +14,7 @@ Turn captured evidence into a small set of cited Knowledge drafts without alteri
 
 1. Confirm the exact Source and Daily input set and output boundary.
 2. For every Source input, require `status: captured`, `review_status: reviewed`, and a non-null `reviewed` date. Stop before reading or writing when a Source is still processing or needs review. Daily inputs are exempt from Source review and capture-classification requirements.
-3. Run `uv run python scripts/validate_vault.py` before reading or extraction. Stop, report the exact failure, and write no Knowledge if any bound Asset is unsafe, missing, unreadable, or hash-drifted, even when URL or Inbox provenance also exists.
+3. Run `uv run python scripts/validate_vault.py --mode strict` before reading or extraction. Stop, report the exact failure, and write no Knowledge if any bound Asset is unsafe, missing, unreadable, or hash-drifted, even when URL or Inbox provenance also exists.
 4. Read each authorized Source and Daily input fully. For every Source, record its `capture_mode` before extracting claims and record inaccessible material as unavailable.
 5. Extract candidate claims with source locations and distinguish fact, inference, opinion, and observation. Never turn paraphrased material into quotation-like wording or upgrade `unknown` or `paraphrased` evidence.
 6. Search for existing canonical notes and aliases.
@@ -22,7 +22,7 @@ Turn captured evidence into a small set of cited Knowledge drafts without alteri
 8. Create or update only authorized `status: draft` Concept notes. For each draft, collect the capture modes of the Sources that draft actually cites. If those cited Sources include `unknown`, `paraphrased`, or `reference-only`, add a non-empty `## Evidence limitations` section with every applicable statement from the contract below.
 9. Optionally append a `Derived notes` link to a Source when explicitly authorized; never rewrite its summary.
 10. Add useful cross-topic links and one appropriate MOC suggestion.
-11. Run `uv run python scripts/validate_vault.py` again after writes.
+11. Run `uv run python scripts/validate_vault.py --mode strict` again after writes.
 12. Hand off revalidated Source paths and capture modes, draft paths and citations, conflicts and limitations, and the owner-only final claim/citation review and optional evergreen promotion.
 
 ## Capture-fidelity limitation contract

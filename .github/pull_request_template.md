@@ -8,7 +8,7 @@ What changed, and why is this the smallest useful change?
 
 ## Validation
 
-- [ ] `python3 scripts/validate_vault.py` passes.
+- [ ] `python3 scripts/validate_vault.py --mode strict` passes.
 - [ ] Templates, schema, examples, and documentation agree.
 - [ ] I reviewed the diff for private data, secrets, local paths, and restricted source text.
 - [ ] I disclosed material AI assistance and performed human review.

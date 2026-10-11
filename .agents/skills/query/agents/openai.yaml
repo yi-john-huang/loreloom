@@ -1,0 +1,4 @@
+interface:
+  display_name: "Query"
+  short_description: "Answer from the vault with citations"
+  default_prompt: "Use $query to answer my question from this vault with citations, starting from index.md."

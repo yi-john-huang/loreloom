@@ -10,11 +10,20 @@ dependencies = []
 [dependency-groups]
 dev = [
   "jsonschema==4.25.1",
+  "pytest==8.4.2",
   "pyyaml==6.0.2",
 ]
 
 [tool.uv]
 package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.loreloom]
+# "daily" (lightweight flow) or "strict" (full governance checks).
+validation_mode = "daily"
 
 [tool.loreloom.jev]
 enabled = false

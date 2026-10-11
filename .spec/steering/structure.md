@@ -11,8 +11,12 @@ loreloom/
 ├── Inbox/                 # Unprocessed, untrusted capture
 ├── Daily/                 # Date-based observations and event logs
 ├── Sources/               # Provenance-bound evidence; capture fidelity may remain unknown
-├── Knowledge/             # Atomic, cited Concept notes
-├── Wiki/                  # Regenerable synthesis from Knowledge inputs
+├── Knowledge/             # Optional legacy layer; strict mode: atomic, cited Concept notes
+├── Wiki/                  # Lightweight pages in sources/, entities/, concepts/, synthesis/, _review/;
+│                          # strict mode: type wiki pages regenerated from Knowledge inputs
+├── index.md               # List of every Wiki page; agents read it first
+├── log.md                 # Append-only history and review notes
+├── CLAUDE.md              # Default lightweight agent flow
 ├── MOCs/                  # Curated Maps of Content and navigation
 ├── Projects/              # Time-bound outcomes
 ├── Areas/                 # Ongoing responsibilities
@@ -21,10 +25,14 @@ loreloom/
 ├── Templates/             # Note templates; excluded from instance validation
 ├── schemas/
 │   ├── frontmatter.schema.json
+│   ├── wiki-page.schema.json  # Lightweight Wiki page contract
 │   └── jev-advisory.schema.json
 ├── scripts/
 │   ├── doctor_vault.py
-│   ├── validate_vault.py
+│   ├── validate_vault.py      # --mode daily (default) or --mode strict
+│   ├── ingest_gate.py         # Read-only auto-accept rule for Wiki pages
+│   ├── lint_wiki.py           # Read-only Wiki health report
+│   ├── migrate_knowledge_to_wiki.py  # Dry run by default; --apply writes
 │   ├── validate_change.py
 │   ├── create_approval_receipt.py
 │   └── jev_advisory.py        # Optional, default-OFF advisory helper
@@ -32,6 +40,7 @@ loreloom/
 │   ├── test_doctor_vault.py
 │   ├── test_validate_vault.py
 │   ├── test_validate_change.py
+│   ├── test_lightweight_flow.py
 │   └── test_jev_advisory.py
 ├── docs/                  # Architecture, conventions, privacy, and workflows
 ├── .agents/

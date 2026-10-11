@@ -202,7 +202,7 @@ class DoctorVaultTests(unittest.TestCase):
         output = io.StringIO()
         with mock.patch.object(doctor_vault.shutil, "which", return_value="/usr/bin/tool"), mock.patch.object(
             doctor_vault.importlib.metadata, "version", return_value="4.25.1"
-        ), mock.patch.object(validate_vault, "main", side_effect=lambda: print("private/path.md") or 1), contextlib.redirect_stdout(output):
+        ), mock.patch.object(validate_vault, "main", side_effect=lambda argv=None: print("private/path.md") or 1), contextlib.redirect_stdout(output):
             checks = self.by_name(doctor_vault.core_checks(self.repo))
         self.assertEqual(checks["vault-validation"].status, "FAIL")
         self.assertEqual(output.getvalue(), "")

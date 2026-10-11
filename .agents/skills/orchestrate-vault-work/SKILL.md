@@ -1,9 +1,11 @@
 ---
 name: orchestrate-vault-work
-description: Coordinate advanced Loreloom work across project-scoped Codex agents only after the owner explicitly requests parallel/custom agents or accepts a stated delegation benefit. Keeps every child read-only and the root as sole writer.
+description: Strict-mode (optional) advanced skill. Coordinate advanced Loreloom work across project-scoped Codex agents only after the owner explicitly requests parallel/custom agents or accepts a stated delegation benefit. Keeps every child read-only and the root as sole writer.
 ---
 
 # Orchestrate Vault Work
+
+> Strict mode (optional, advanced). The default lightweight flow in `CLAUDE.md` runs in one root agent and does not use this skill.
 
 Keep the root agent responsible for scope, decisions, writes, validation, and the final answer. Delegate bounded evidence gathering and specialist review.
 
@@ -18,7 +20,7 @@ Keep the root agent responsible for scope, decisions, writes, validation, and th
 7. If a role is unavailable, do not substitute silently. Low-risk extraction or proposal work may return to the root with reduced coverage disclosed; material synthesis or review requires direct owner review and an incomplete-specialist-coverage report.
 8. Reconcile disagreements against Sources and policy, never majority vote.
 9. Before writing, record the immutable 40-character base commit and run `uv run python -I scripts/validate_change.py --check-clean --base <40-character-commit> --snapshot-file <absolute-temp-path>` with one exact `--allow` per authorized output path. Let only the root write.
-10. Run `uv run --locked python scripts/validate_vault.py`, then run every final `uv run python -I scripts/validate_change.py --target-root <candidate-vault-root> ...` from a separate clean detached worktree at the immutable base with the same snapshot and every exact changed path. Request independent read-only review for material changes when available.
+10. Run `uv run --locked python scripts/validate_vault.py --mode strict`, then run every final `uv run python -I scripts/validate_change.py --target-root <candidate-vault-root> ...` from a separate clean detached worktree at the immutable base with the same snapshot and every exact changed path. Request independent read-only review for material changes when available.
 11. If a gated path needs approval, stop for an owner- or trusted-UI-created receipt under protected Git metadata. Never create or alter that receipt.
 12. Report assignments, accepted and rejected findings, changes, uncertainty, human review, specialist coverage, and validation.
 

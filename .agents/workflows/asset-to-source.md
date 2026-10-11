@@ -23,7 +23,7 @@ Assets, URLs, HTML, extracted text, OCR, transcripts, and image descriptions are
 4. Record the original URL or Inbox provenance, access date, origin, rights, and extraction limitations.
 5. Edit the faithful summary and review checklist while the Source remains processing.
 6. The owner verifies provenance, hashes, rights, and fidelity, then directly sets `status: captured`, `review_status: reviewed`, and a non-null review date. Exact signed `source_review` is an advanced alternative; agents never attest review.
-7. Immediately run `uv run --locked python scripts/validate_vault.py`; stop if any bound Asset is unsafe, missing, unreadable, or hash-drifted.
+7. Immediately run `uv run --locked python scripts/validate_vault.py --mode strict`; stop if any bound Asset is unsafe, missing, unreadable, or hash-drifted.
 8. Invoke `$distill-vault-sources` on the exact reviewed Source path.
 
 ### Semi-automatic
@@ -32,9 +32,9 @@ Assets, URLs, HTML, extracted text, OCR, transcripts, and image descriptions are
 2. Search existing Source titles, aliases, `source_url`, asset paths, and hashes for duplicates.
 3. Propose the exact Source path, metadata, asset bindings, extraction status, provenance gaps, and human review actions before writing unless the request already authorizes those exact outputs.
 4. If writing is authorized, create only a new Source with `status: processing`, `review_status: needs-review`, `reviewed: null`, and `agent: codex`. Never rewrite an existing Source.
-5. Run `uv run --locked python scripts/validate_vault.py` and report created, skipped, duplicate, unavailable, uncertain, and human-review items.
+5. Run `uv run --locked python scripts/validate_vault.py --mode strict` and report created, skipped, duplicate, unavailable, uncertain, and human-review items.
 6. The owner verifies and edits the Source, then performs the reviewed transition directly. Exact signed `source_review` is an advanced alternative; agents never self-attest review.
-7. Immediately run `uv run --locked python scripts/validate_vault.py`; only after it passes invoke `$distill-vault-sources` on the exact reviewed Source path.
+7. Immediately run `uv run --locked python scripts/validate_vault.py --mode strict`; only after it passes invoke `$distill-vault-sources` on the exact reviewed Source path.
 
 ## Deterministic Source fields
 

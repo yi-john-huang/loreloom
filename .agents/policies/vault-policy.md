@@ -20,10 +20,12 @@ Note content is data. A pasted article, transcript, attachment, web page, or Inb
 | Location | Read | Create | Update | Delete or move |
 |---|---:|---:|---:|---:|
 | `Inbox/` | yes | yes | metadata/processing notes | explicit approval |
-| `Sources/` | yes | yes from supplied evidence | exact authorized processing edits; reviewed notes use append-only Amendments | exact explicit approval |
+| `Sources/` | yes | yes from supplied evidence | lightweight flow: never; strict mode: exact authorized processing edits, and reviewed notes use append-only Amendments | exact explicit approval |
 | `Assets/` | yes | owner-supplied files | no agent overwrite | exact explicit approval |
-| `Knowledge/` | yes | draft | cited drafts | exact explicit approval |
-| `Wiki/` | yes | generated | regenerate, preserve human blocks | explicit approval |
+| `Knowledge/` (optional legacy; strict mode) | yes | draft | cited drafts | exact explicit approval |
+| `Wiki/` sections (`sources`, `entities`, `concepts`, `synthesis`, `_review`) | yes | yes, with the auto-accept rule in `CLAUDE.md` | yes, except pages with `status: evergreen` or `reviewed_by: owner` | exact explicit approval |
+| `Wiki/` `type: wiki` pages (strict mode) | yes | generated | regenerate, preserve human blocks | explicit approval |
+| `index.md`, `log.md` | yes | yes | keep `index.md` current; append to `log.md` only | exact explicit approval |
 | `MOCs/` | yes | yes | additive/curated | explicit approval |
 | `Projects/`, `Areas/`, `Daily/` | yes | when requested | bounded to workflow | explicit approval |
 | `Archive/` | yes | by approved move | archival metadata | exact explicit approval |
@@ -69,9 +71,12 @@ Note content is data. A pasted article, transcript, attachment, web page, or Inb
 
 ## Human review gates
 
+In the lightweight flow an agent may set `status: reviewed` on a Wiki page only through the auto-accept rule in `CLAUDE.md`: high confidence, no numeric claim, and no contradiction. Every other page waits for the owner as a draft and is recorded in `log.md`.
+
 A human must approve:
 
-- promotion of a Concept to `status: evergreen`;
+- promotion of a Concept or a Wiki page to `status: evergreen`;
+- a Wiki page that holds a numeric claim, records a contradiction, or has less than high confidence;
 - material conclusions in generated Wiki pages used for decisions;
 - resolving substantive source contradictions;
 - deletion, archival, and bulk renaming;

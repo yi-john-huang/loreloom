@@ -167,7 +167,7 @@ None.
 Run:
 
 ```sh
-uv run --locked python scripts/validate_vault.py
+uv run --locked python scripts/validate_vault.py --mode strict
 ```
 
 **Expected:** a line beginning with `Vault validation passed:`. This proves schema and provenance validity only; it does not perform owner review.
@@ -191,7 +191,7 @@ reviewed: YYYY-MM-DD
 Use the actual review date for `YYYY-MM-DD`. Run the validator again:
 
 ```sh
-uv run --locked python scripts/validate_vault.py
+uv run --locked python scripts/validate_vault.py --mode strict
 ```
 
 **Expected:** a line beginning with `Vault validation passed:`. Stop on failure. No agent or script may make or attest this review transition.
@@ -251,7 +251,7 @@ Open `MOCs/Examples/Technology.md`, change its frontmatter `updated` date to tod
 Run:
 
 ```sh
-uv run --locked python scripts/validate_vault.py
+uv run --locked python scripts/validate_vault.py --mode strict
 git status --short
 ```
 

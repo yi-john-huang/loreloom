@@ -28,8 +28,14 @@ jobs:
       - name: Sync validation environment
         run: uv sync --locked --dev
 
-      - name: Validate vault
-        run: uv run python scripts/validate_vault.py
+      - name: Validate vault (daily mode)
+        run: uv run python scripts/validate_vault.py --mode daily
+
+      - name: Validate vault (strict mode)
+        run: uv run python scripts/validate_vault.py --mode strict
+
+      - name: Report Wiki health
+        run: uv run python scripts/lint_wiki.py
 
       - name: Test change guardrails
         run: uv run python -m unittest discover -s tests -v
@@ -62,5 +68,10 @@ jobs:
       - name: Check core readiness
         run: uv run --locked --python ${{ matrix.python }} python scripts/doctor_vault.py
 
+      - name: Validate vault in both modes
+        run: |
+          uv run --locked --python ${{ matrix.python }} python scripts/validate_vault.py --mode daily
+          uv run --locked --python ${{ matrix.python }} python scripts/validate_vault.py --mode strict
+
       - name: Test portable core
-        run: uv run --locked --python ${{ matrix.python }} python -m unittest -v tests.test_doctor_vault tests.test_validate_vault tests.test_jev_advisory
+        run: uv run --locked --python ${{ matrix.python }} python -m unittest -v tests.test_doctor_vault tests.test_validate_vault tests.test_jev_advisory tests.test_lightweight_flow

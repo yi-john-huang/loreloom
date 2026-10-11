@@ -1,9 +1,11 @@
 ---
 name: regenerate-vault-wiki
-description: Build or regenerate a Loreloom generated Wiki page from declared Knowledge inputs. Use for overview pages, comparisons, guides, conflict synthesis, changed-input refreshes, or stale Wiki review. Preserves human-owned blocks exactly and never adds facts absent from authorized inputs.
+description: Strict-mode (optional) skill for legacy generated pages with type wiki. Build or regenerate a Loreloom generated Wiki page from declared Knowledge inputs. Use for overview pages, comparisons, guides, conflict synthesis, changed-input refreshes, or stale Wiki review. Preserves human-owned blocks exactly and never adds facts absent from authorized inputs.
 ---
 
 # Regenerate Vault Wiki
+
+> Strict mode (optional). This skill handles generated `type: wiki` pages built from `Knowledge/` inputs. The default lightweight flow in `CLAUDE.md` writes pages under the `Wiki/` sections with `$ingest` and `$file-answer`.
 
 ## Workflow
 
@@ -14,7 +16,7 @@ description: Build or regenerate a Loreloom generated Wiki page from declared Kn
 5. Use `$orchestrate-vault-work` only after explicit owner opt-in when independent coverage or synthesis review materially benefits from advanced delegation.
 6. Compare the proposal with the current page and surface changed conclusions before writing.
 7. Let the root agent regenerate only authorized content, restore the human block exactly, and update `generated_at`, `generator`, `inputs`, and `review_status`.
-8. Run `uv run --locked python scripts/validate_vault.py`. An owner-approved multi-agent mutation additionally uses the immutable-base change-validator protocol and optional independent reviewer. Material synthesis always requires owner review; report incomplete specialist coverage when a requested reviewer is unavailable.
+8. Run `uv run --locked python scripts/validate_vault.py --mode strict`. An owner-approved multi-agent mutation additionally uses the immutable-base change-validator protocol and optional independent reviewer. Material synthesis always requires owner review; report incomplete specialist coverage when a requested reviewer is unavailable.
 
 ## Output
 

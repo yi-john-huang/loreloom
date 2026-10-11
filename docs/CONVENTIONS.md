@@ -1,5 +1,17 @@
 # Conventions
 
+## Lightweight Wiki pages
+
+- Put a page in the section that matches its `type`: `Wiki/sources/`, `Wiki/entities/`, `Wiki/concepts/`, or `Wiki/synthesis/`. Spell the folder `Wiki/`; do not create a lowercase `wiki/`.
+- Link with the full path, for example `[[Wiki/sources/Examples/AWS IAM roles summary]]`.
+- Give every page one line in `index.md`: the wikilink, a dash, and a one-sentence summary.
+- Record a conflict in a `## Contradictions` section and in the `contradicts` frontmatter list. Do not overwrite the older claim.
+- Write prose that follows the sdd-mcp [`output-clarity-ladder` skill](https://github.com/yi-john-huang/sdd-mcp/blob/master/skills/output-clarity-ladder/SKILL.md): one idea per sentence, short sentences, active voice, one word for one thing, and no dropped numbers, conditions, or uncertainty. `npx -y sdd-mcp-server@latest setup-global` installs the skill at `~/.claude/skills/output-clarity-ladder/SKILL.md`. The repository keeps no copy.
+- Write Wiki prose in Traditional Chinese to the skill's zh-TW reference, [`references/zh-TW.md`](https://github.com/yi-john-huang/sdd-mcp/tree/master/skills/output-clarity-ladder/references). The Japanese reference is `references/ja.md`.
+- Append to `log.md`; never rewrite an old entry. Heading format: `## [YYYY-MM-DD] action | subject`.
+
+The remaining conventions apply to every note unless a section names strict mode.
+
 ## File and title rules
 
 - Use descriptive natural-language filenames: `Tokyo ramen observation.md`, not `tokyo-ramen-v2-final.md`.
@@ -82,6 +94,7 @@ Agents must reproduce the marked block byte-for-byte unless the user explicitly 
 | `captured` | Stored but not processed |
 | `processing` | Editable Source intake or another active workflow state |
 | `draft` | Usable but not human-approved |
+| `reviewed` | Lightweight Wiki pages only: accepted by the auto-accept rule (`reviewed_by: agent`) or by the owner (`reviewed_by: owner`) |
 | `evergreen` | Human-reviewed canonical knowledge |
 | `active` | Current Project or Area |
 | `on-hold` | Intentionally paused |

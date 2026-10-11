@@ -1,9 +1,11 @@
 ---
 name: capture-vault-source
-description: Create editable Loreloom Source notes from exact local Assets, URLs, or Inbox provenance with explicit capture-method and capture-mode classification. Use for conservative evidence intake before Source review; never upgrades uncertain fidelity, overwrites assets or reviewed Sources, fetches URLs silently, or creates Knowledge.
+description: Strict-mode (optional) skill; the default lightweight intake is the ingest skill. Create editable Loreloom Source notes from exact local Assets, URLs, or Inbox provenance with explicit capture-method and capture-mode classification. Use for conservative evidence intake before Source review; never upgrades uncertain fidelity, overwrites assets or reviewed Sources, fetches URLs silently, or creates Knowledge.
 ---
 
 # Capture Vault Source
+
+> Strict mode (optional). The default lightweight flow in `CLAUDE.md` uses `$ingest`. Use this skill when the owner asks for strict mode or names this skill, or when a new Source must pass `--mode strict`.
 
 ## Workflow
 
@@ -15,7 +17,7 @@ description: Create editable Loreloom Source notes from exact local Assets, URLs
 6. Read only exact existing local Assets. Record `media_type`, SHA-256, extraction status, provenance, rights, locators, Capture Boundary, and machine-assisted limitations. Record URLs without fetching them.
 7. Classify `capture_method` and `capture_mode` using the workflow's evidence-based rules. Preserve a supplied valid classification and report its basis. Use `unknown` rather than upgrading when the basis is insufficient; quotation marks, style, extension, tool name, hash, or confidence alone do not prove fidelity.
 8. If writing is authorized, create only new `status: processing`, `review_status: needs-review`, `reviewed: null`, `agent: codex` Source notes. Never rewrite, regenerate, move, rename, delete, overwrite, or fidelity-upgrade an existing Source or Asset.
-9. Run `uv run --locked python scripts/validate_vault.py` after a write. Only an owner-approved multi-agent mutation uses the advanced change-validator and approval-receipt protocol; agents never create or alter receipts.
+9. Run `uv run --locked python scripts/validate_vault.py --mode strict` after a write. Only an owner-approved multi-agent mutation uses the advanced change-validator and approval-receipt protocol; agents never create or alter receipts.
 10. Hand off the exact Source path, fields to verify, Asset hash or URL/Inbox provenance result, capture method/mode and evidence basis, machine-assisted limitations, validator result, and owner-only review transition. Direct owner edit is the default; signed exact `source_review` is an advanced alternative. Agents never attest review. Do not create Knowledge, Wiki, MOC, Project, Area, or Daily notes.
 
 ## Required output contract

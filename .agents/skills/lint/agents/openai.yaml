@@ -1,0 +1,4 @@
+interface:
+  display_name: "Lint"
+  short_description: "Report Wiki health and review backlog"
+  default_prompt: "Use $lint to report the health of the Wiki and recommend repairs without changing any file."

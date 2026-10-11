@@ -4,6 +4,44 @@
 
 The vault stores many subjects in one graph while separating notes by lifecycle and authority. A note about a conference can connect technology, career, travel, and food without being duplicated into four topic folders.
 
+## Two flows
+
+Loreloom has a default lightweight flow and an optional strict mode. Both use the same folders and the same Markdown files.
+
+### Lightweight flow (default)
+
+```text
+Sources/ (raw evidence, never changed)
+        |
+        v
+ingest -> Wiki/sources, Wiki/entities, Wiki/concepts
+        |
+        v
+auto-accept rule -> status: reviewed
+                 -> status: draft or Wiki/_review/ + log.md note
+        |
+        v
+index.md and log.md
+        |
+        v
+query -> file-answer -> Wiki/synthesis
+```
+
+- **`Sources/` and `Assets/`** hold raw evidence. An agent may add a new raw file. It never changes an existing one.
+- **`Wiki/`** holds the pages that the agent writes: one summary per Source, entity pages, concept pages, and synthesis pages. Each page has six frontmatter fields and cites its sources.
+- **`index.md`** lists every Wiki page with a one-sentence summary. An agent reads it first on every ingest and every query. There is no vector database and no RAG.
+- **`log.md`** is the append-only history. It records each ingest, filed answer, lint repair, and migration, and it lists the pages that wait for the owner.
+- **Auto-accept rule.** A page with high confidence, no numeric claim, and no contradiction gets `status: reviewed` directly. Every other page stays a draft, or goes to `Wiki/_review/`, and gets a `Needs review:` line in `log.md`. `scripts/ingest_gate.py` applies the rule.
+- **Owner role.** The owner reviews the exceptions, resolves contradictions, and is the only one who sets `status: evergreen`.
+
+`Knowledge/` is optional in this flow. [Migrating to the lightweight flow](migration-lightweight.md) explains how to copy old notes. The rules for agents are in [`CLAUDE.md`](../CLAUDE.md).
+
+**Directory name.** The lightweight plan writes `wiki/`. Loreloom keeps the existing `Wiki/` and adds the sections inside it, because two folders that differ only by letter case are one folder on macOS and Windows and two folders on Linux. Legacy generated pages (`type: wiki`) stay directly under `Wiki/`.
+
+### Strict mode (optional)
+
+Strict mode is the high-governance lifecycle described in the rest of this document: classified and owner-reviewed Sources, Asset hashes, cited `Knowledge/` drafts, human-only evergreen promotion, and generated `type: wiki` pages. Run it with `validate_vault.py --mode strict`.
+
 ## Layers
 
 ### Capture: `Inbox/`, `Daily/`, and `Assets/`
@@ -74,7 +112,7 @@ The lifecycle is not fully automatic:
 1. An owner supplies a local Asset, records an absolute HTTP(S) URL, or captures an Inbox/Daily item.
 2. Manual intake or `$capture-vault-source` creates an editable Source in `status: processing` with explicit `source_type`, `capture_method`, `capture_mode`, and Capture Boundary.
 3. The owner verifies provenance, hashes, rights, classification, and fidelity, then reviews directly; signed `source_review` is an advanced alternative.
-4. `validate_vault.py` immediately revalidates every bound Asset and the mechanical capture prerequisites against current bytes and metadata.
+4. `validate_vault.py --mode strict` immediately revalidates every bound Asset and the mechanical capture prerequisites against current bytes and metadata.
 5. `$distill-vault-sources` reads only owner-reviewed, revalidated Sources, records their capture modes, and creates cited `status: draft` Concepts with required Evidence limitations.
 6. The owner verifies every important claim, citation, and retained limitation before optional evergreen promotion.
 7. An agent may regenerate relevant Wiki pages from reviewed Knowledge plus explicitly allowed drafts, and MOCs may receive useful links.

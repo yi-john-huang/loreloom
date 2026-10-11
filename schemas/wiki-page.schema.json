@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/loreloom/wiki-page.schema.json",
+  "title": "Loreloom lightweight Wiki page frontmatter",
+  "description": "Minimal contract for pages under Wiki/sources, Wiki/entities, Wiki/concepts, Wiki/synthesis, and Wiki/_review. Extra fields are permitted.",
+  "type": "object",
+  "required": ["title", "type", "status", "confidence", "sources", "updated"],
+  "properties": {
+    "title": {"type": "string", "minLength": 1},
+    "type": {"enum": ["source", "entity", "concept", "synthesis"]},
+    "status": {"enum": ["draft", "reviewed", "evergreen"]},
+    "confidence": {"enum": ["high", "medium", "low"]},
+    "sources": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "updated": {"type": "string", "format": "date"},
+    "reviewed_by": {"enum": ["agent", "owner"]},
+    "contradicts": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    },
+    "migrated_from": {"type": "string", "minLength": 1}
+  }
+}

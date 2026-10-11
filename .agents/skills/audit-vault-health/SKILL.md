@@ -1,14 +1,16 @@
 ---
 name: audit-vault-health
-description: Perform a read-only Loreloom health audit covering schema errors, broken or ambiguous links, provenance gaps, stale generated pages, privacy risks, orphan notes, and workflow drift. Use for weekly reviews, pre-publication checks, unexplained vault degradation, or broad cleanup requests before any repair work.
+description: Strict-mode (optional) skill; the default lightweight check is the lint skill. Perform a read-only Loreloom health audit covering schema errors, broken or ambiguous links, provenance gaps, stale generated pages, privacy risks, orphan notes, and workflow drift. Use for weekly reviews, pre-publication checks, unexplained vault degradation, or broad cleanup requests before any repair work.
 ---
 
 # Audit Vault Health
 
+> Strict mode (optional). The default lightweight flow in `CLAUDE.md` uses `$lint` for the Wiki. Use this skill when the owner asks for strict mode or names this skill.
+
 ## Workflow
 
 1. Read `AGENTS.md`, `.agents/policies/vault-policy.md`, and `.agents/workflows/weekly-maintenance.md`.
-2. Run `uv run python scripts/validate_vault.py` and preserve its objective failures separately from editorial judgment.
+2. Run `uv run python scripts/validate_vault.py --mode strict` and preserve its objective failures separately from editorial judgment.
 3. Define the requested date window or vault slice.
 4. Audit every requested dimension sequentially in the root agent and consolidate exact-path findings.
 5. Use `$orchestrate-vault-work` only after explicit owner opt-in when a broad audit materially benefits from disjoint read-only provenance, architecture, or privacy review.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "File Answer"
+  short_description: "Save an answer as a synthesis page"
+  default_prompt: "Use $file-answer to save the last answer as a page in Wiki/synthesis/ and link it from related pages."

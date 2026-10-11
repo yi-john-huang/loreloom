@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
-"""Validate managed note frontmatter and Obsidian wikilinks."""
+"""Validate managed note frontmatter and Obsidian wikilinks.
+
+Two modes are supported. ``daily`` (the default) checks only basic
+frontmatter, required fields, and broken wikilinks. ``strict`` adds the full
+governance checks: the frontmatter schema, Asset hashes, Source review state,
+capture fidelity, citation rules, repository hygiene, and agent tooling.
+"""
 
 from __future__ import annotations
 
 from html import unescape
+import argparse
 import hashlib
+import os
 import re
 import subprocess
 import sys
@@ -12,7 +20,7 @@ import tomllib
 from collections import defaultdict
 from datetime import date
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 from urllib.parse import unquote, urlparse
 
 try:
@@ -39,6 +47,31 @@ MANAGED_ROOTS = (
     "Daily",
     "Archive",
 )
+VALIDATION_MODES = ("daily", "strict")
+DEFAULT_VALIDATION_MODE = "daily"
+VALIDATION_MODE_ENV = "LORELOOM_VALIDATION_MODE"
+WIKI_ROOT = "Wiki"
+WIKI_SECTION_TYPES = {
+    "sources": "source",
+    "entities": "entity",
+    "concepts": "concept",
+    "synthesis": "synthesis",
+}
+WIKI_REVIEW_SECTION = "_review"
+WIKI_PAGE_SCHEMA_PATH = "schemas/wiki-page.schema.json"
+WIKI_INDEX_NAME = "index.md"
+WIKI_LOG_NAME = "log.md"
+DIRECTORY_TYPES = {
+    "Inbox": "inbox",
+    "Sources": "source",
+    "Knowledge": "concept",
+    "Wiki": "wiki",
+    "MOCs": "moc",
+    "Projects": "project",
+    "Areas": "area",
+    "Daily": "daily",
+}
+BASIC_REQUIRED_FIELDS = ("type", "title", "status")
 JEV_SIDECAR_DIRECTORY = (".loreloom", "jev")
 JEV_SCHEMA_PATH = "schemas/jev-advisory.schema.json"
 MAX_JEV_SIDECAR_BYTES = 1024 * 1024
@@ -701,7 +734,18 @@ def has_audio_video_provenance(metadata: dict[str, Any]) -> bool:
     )
 
 
+def is_wiki_page(path: Path) -> bool:
+    """Return whether a note is a lightweight page under a Wiki/ section."""
+    parts = path.relative_to(ROOT).parts
+    return (
+        len(parts) > 2
+        and parts[0] == WIKI_ROOT
+        and (parts[1] in WIKI_SECTION_TYPES or parts[1] == WIKI_REVIEW_SECTION)
+    )
+
+
 def managed_notes() -> list[Path]:
+    """Return lifecycle notes; lightweight Wiki pages are listed by wiki_pages()."""
     notes: list[Path] = []
     for root_name in MANAGED_ROOTS:
         root = ROOT / root_name
@@ -709,9 +753,20 @@ def managed_notes() -> list[Path]:
             notes.extend(
                 path
                 for path in root.rglob("*.md")
-                if path.name.lower() != "readme.md"
+                if path.name.lower() != "readme.md" and not is_wiki_page(path)
             )
     return sorted(notes)
+
+
+def wiki_pages() -> list[Path]:
+    root = ROOT / WIKI_ROOT
+    if not root.exists():
+        return []
+    return sorted(
+        path
+        for path in root.rglob("*.md")
+        if path.name.lower() != "readme.md" and is_wiki_page(path)
+    )
 
 
 def all_note_paths() -> list[Path]:
@@ -1043,7 +1098,12 @@ def embedded_asset_errors(paths: list[Path]) -> list[str]:
         targets = list(dict.fromkeys(normalize_asset_target(raw) for raw in raw_targets))
 
         metadata, parse_error = load_frontmatter(source_path)
-        is_source = not parse_error and metadata is not None and metadata.get("type") == "source"
+        is_source = (
+            not parse_error
+            and metadata is not None
+            and metadata.get("type") == "source"
+            and not is_wiki_page(source_path)
+        )
         declared_assets: set[str] = set()
         if is_source:
             assets = metadata.get("assets", [])
@@ -1078,16 +1138,7 @@ def schema_errors(notes: list[Path]) -> list[str]:
     Draft202012Validator.check_schema(schema)
     validator = Draft202012Validator(schema, format_checker=FormatChecker())
     errors: list[str] = []
-    directory_types = {
-        "Inbox": "inbox",
-        "Sources": "source",
-        "Knowledge": "concept",
-        "Wiki": "wiki",
-        "MOCs": "moc",
-        "Projects": "project",
-        "Areas": "area",
-        "Daily": "daily",
-    }
+    directory_types = DIRECTORY_TYPES
 
     for path in notes:
         metadata, parse_error = load_frontmatter(path)
@@ -1253,6 +1304,217 @@ def schema_errors(notes: list[Path]) -> list[str]:
                 errors.append(f"{relative(path)}: human block markers are reversed")
 
     return errors
+
+
+def valid_iso_date(value: Any) -> bool:
+    if not isinstance(value, str) or not DATE_RE.fullmatch(value):
+        return False
+    try:
+        date.fromisoformat(value)
+    except ValueError:
+        return False
+    return True
+
+
+def basic_frontmatter_findings(notes: list[Path]) -> tuple[list[str], list[str]]:
+    """Daily-mode checks for lifecycle notes; return (errors, warnings).
+
+    Sources/ holds raw evidence that agents never alter, so a raw file there
+    needs no frontmatter in daily mode. Strict mode applies the full schema.
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+    for path in notes:
+        root_name = path.relative_to(ROOT).parts[0]
+        metadata, parse_error = load_frontmatter(path)
+        if root_name == "Sources":
+            if parse_error and parse_error != "missing YAML frontmatter":
+                warnings.append(f"{relative(path)}: {parse_error}")
+            continue
+        if parse_error:
+            errors.append(f"{relative(path)}: {parse_error}")
+            continue
+        assert metadata is not None
+
+        missing = [
+            field
+            for field in BASIC_REQUIRED_FIELDS
+            if not isinstance(metadata.get(field), str) or not metadata[field].strip()
+        ]
+        if missing:
+            errors.append(
+                f"{relative(path)}: missing required field(s): {', '.join(missing)}"
+            )
+        expected_type = DIRECTORY_TYPES.get(root_name)
+        if (
+            expected_type
+            and "type" not in missing
+            and metadata.get("type") != expected_type
+        ):
+            errors.append(
+                f"{relative(path)}: notes in {root_name}/ must use type '{expected_type}'"
+            )
+        for field in ("created", "updated"):
+            if field in metadata and not valid_iso_date(metadata[field]):
+                errors.append(f"{relative(path)}: {field}: must be a YYYY-MM-DD date")
+    return errors, warnings
+
+
+def linked_targets(path: Path) -> set[str]:
+    """Return casefolded wikilink targets found in one Markdown file."""
+    if not path.is_file():
+        return set()
+    text = markdown_without_fenced_code(path.read_text(encoding="utf-8"))
+    return {
+        normalize_target(match.group(1)).casefold()
+        for match in WIKILINK_RE.finditer(text)
+    }
+
+
+def wiki_layout_errors() -> list[str]:
+    """Reject a second Wiki directory that differs only by letter case."""
+    try:
+        names = [item.name for item in ROOT.iterdir() if item.is_dir()]
+    except OSError:
+        return []
+    clashes = sorted(
+        name for name in names if name != WIKI_ROOT and name.casefold() == "wiki"
+    )
+    if clashes and WIKI_ROOT in names:
+        return [
+            f"{clashes[0]}/: conflicts with {WIKI_ROOT}/ on case-insensitive "
+            f"filesystems; keep every page under {WIKI_ROOT}/"
+        ]
+    return []
+
+
+def strict_wiki_source_errors(
+    metadata: dict[str, Any], source: str, target: str
+) -> list[str]:
+    """Strict-mode citation rules for one wikilink source of a Wiki page."""
+    allowed = ["Sources/", "Daily/", "Assets/"]
+    if metadata.get("type") == "synthesis":
+        allowed.append(f"{WIKI_ROOT}/")
+    if not target.casefold().startswith(tuple(item.casefold() for item in allowed)):
+        return [
+            f"source must be a {', '.join(allowed)} wikilink in strict mode "
+            f"(found '{source}')"
+        ]
+    if metadata.get("status") not in {"reviewed", "evergreen"}:
+        return []
+    if not target.startswith("Sources/"):
+        return []
+    target_path = ROOT / f"{target}.md"
+    if not target_path.is_file():
+        return []
+    source_metadata, source_error = load_frontmatter(target_path)
+    if source_error or source_metadata is None or (
+        source_metadata.get("status") != "captured"
+        or source_metadata.get("review_status") != "reviewed"
+        or source_metadata.get("reviewed") is None
+    ):
+        return [
+            "reviewed page cites a Source that is not owner-reviewed "
+            f"(found '{source}')"
+        ]
+    return []
+
+
+def wiki_page_findings(
+    pages: list[Path], mode: str
+) -> tuple[list[str], list[str]]:
+    """Check lightweight Wiki pages; return (errors, warnings)."""
+    import json
+
+    from jsonschema import SchemaError
+
+    if not pages:
+        return [], []
+    try:
+        schema = json.loads(
+            (ROOT / WIKI_PAGE_SCHEMA_PATH).read_text(encoding="utf-8")
+        )
+        Draft202012Validator.check_schema(schema)
+    except (OSError, ValueError, SchemaError):
+        return [f"{WIKI_PAGE_SCHEMA_PATH}: missing or invalid Wiki page schema"], []
+    validator = Draft202012Validator(schema, format_checker=FormatChecker())
+
+    errors: list[str] = []
+    warnings: list[str] = []
+    indexed = linked_targets(ROOT / WIKI_INDEX_NAME)
+    logged = linked_targets(ROOT / WIKI_LOG_NAME)
+    for path in pages:
+        name = relative(path)
+        metadata, parse_error = load_frontmatter(path)
+        if parse_error:
+            errors.append(f"{name}: {parse_error}")
+            continue
+        assert metadata is not None
+
+        for violation in sorted(
+            validator.iter_errors(metadata), key=lambda item: list(item.path)
+        ):
+            field = ".".join(str(part) for part in violation.absolute_path)
+            errors.append(f"{name}: {field or 'frontmatter'}: {violation.message}")
+
+        section = path.relative_to(ROOT).parts[1]
+        in_review_queue = section == WIKI_REVIEW_SECTION
+        expected_type = WIKI_SECTION_TYPES.get(section)
+        if expected_type and metadata.get("type") != expected_type:
+            errors.append(
+                f"{name}: pages in {WIKI_ROOT}/{section}/ must use type "
+                f"'{expected_type}'"
+            )
+        status = metadata.get("status")
+        if in_review_queue and status != "draft":
+            errors.append(
+                f"{name}: pages in {WIKI_ROOT}/{WIKI_REVIEW_SECTION}/ must stay "
+                "status 'draft' until the owner moves them out"
+            )
+
+        sources = metadata.get("sources")
+        if isinstance(sources, list):
+            if not sources:
+                if status in {"reviewed", "evergreen"}:
+                    errors.append(
+                        f"{name}: status '{status}' requires at least one source"
+                    )
+                else:
+                    warnings.append(f"{name}: draft page has no sources yet")
+            for source in sources:
+                if not isinstance(source, str):
+                    continue
+                match = re.fullmatch(r"\[\[([^\[\]]+)\]\]", source.strip())
+                if not match and not valid_source_url(source):
+                    errors.append(
+                        f"{name}: source must be a wikilink or an HTTP(S) URL "
+                        f"(found '{source}')"
+                    )
+                    continue
+                if mode == "strict" and match:
+                    errors.extend(
+                        f"{name}: {error}"
+                        for error in strict_wiki_source_errors(
+                            metadata, source, normalize_target(match.group(1))
+                        )
+                    )
+
+        title = metadata.get("title")
+        if mode == "strict" and isinstance(title, str) and title != path.stem:
+            errors.append(
+                f"{name}: title must match filename '{path.stem}' (found '{title}')"
+            )
+
+        vault_path = name[:-3].casefold()
+        stem = path.stem.casefold()
+        if in_review_queue:
+            if vault_path not in logged and stem not in logged:
+                warnings.append(
+                    f"{name}: review-queue page is not recorded in {WIKI_LOG_NAME}"
+                )
+        elif vault_path not in indexed and stem not in indexed:
+            warnings.append(f"{name}: page is not listed in {WIKI_INDEX_NAME}")
+    return errors, warnings
 
 
 def concept_capture_fidelity_warnings(notes: list[Path]) -> list[str]:
@@ -1626,10 +1888,63 @@ def jev_sidecar_findings() -> tuple[list[str], list[str]]:
     return errors, warnings
 
 
-def main() -> int:
+def configured_validation_mode() -> tuple[str | None, str]:
+    """Return (mode, origin) from the environment or pyproject.toml.
+
+    The mode is None when the configured value is not a known mode.
+    """
+    raw = os.environ.get(VALIDATION_MODE_ENV)
+    origin = f"{VALIDATION_MODE_ENV} environment variable"
+    if raw is None or not raw.strip():
+        origin = "pyproject.toml [tool.loreloom] validation_mode"
+        try:
+            project = tomllib.loads(
+                (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+            )
+            raw = project["tool"]["loreloom"]["validation_mode"]
+        except (OSError, UnicodeError, tomllib.TOMLDecodeError, KeyError, TypeError):
+            return DEFAULT_VALIDATION_MODE, "built-in default"
+    if not isinstance(raw, str):
+        return None, origin
+    mode = raw.strip().casefold()
+    return (mode if mode in VALIDATION_MODES else None), origin
+
+
+def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Validate vault notes in daily (default) or strict mode."
+    )
+    parser.add_argument(
+        "--mode",
+        choices=VALIDATION_MODES,
+        help=(
+            "daily: basic frontmatter, required fields, and broken wikilinks; "
+            "strict: every governance check. Defaults to "
+            f"{VALIDATION_MODE_ENV}, then [tool.loreloom] validation_mode, "
+            f"then '{DEFAULT_VALIDATION_MODE}'."
+        ),
+    )
+    return parser.parse_args([] if argv is None else argv)
+
+
+def daily_findings() -> tuple[list[str], list[str]]:
+    errors, warnings = basic_frontmatter_findings(managed_notes())
+    all_paths = all_note_paths()
+    raw_evidence = [
+        path for path in all_paths if path.relative_to(ROOT).parts[0] == "Sources"
+    ]
+    errors.extend(
+        wikilink_errors([path for path in all_paths if path not in raw_evidence])
+    )
+    # Agents never alter raw evidence, so its broken links are only reported.
+    warnings.extend(wikilink_errors(raw_evidence))
+    return errors, warnings
+
+
+def strict_findings() -> tuple[list[str], list[str]]:
     notes = managed_notes()
     all_paths = all_note_paths()
-    errors = []
+    errors: list[str] = []
     errors.extend(schema_errors(notes))
     errors.extend(asset_metadata_errors(notes))
     errors.extend(embedded_asset_errors(all_paths))
@@ -1637,13 +1952,33 @@ def main() -> int:
     errors.extend(repository_hygiene_errors())
     errors.extend(codex_agent_errors())
     errors.extend(skill_errors())
-    warnings = concept_capture_fidelity_warnings(notes)
+    return errors, concept_capture_fidelity_warnings(notes)
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    args = parse_args(argv)
+    mode = args.mode
+    if mode is None:
+        mode, origin = configured_validation_mode()
+        if mode is None:
+            print(
+                f"Invalid validation mode from {origin}; "
+                f"use one of: {', '.join(VALIDATION_MODES)}",
+                file=sys.stderr,
+            )
+            return 2
+
+    errors, warnings = strict_findings() if mode == "strict" else daily_findings()
+    errors.extend(wiki_layout_errors())
+    wiki_errors, wiki_warnings = wiki_page_findings(wiki_pages(), mode)
+    errors.extend(wiki_errors)
+    warnings.extend(wiki_warnings)
     jev_errors, jev_warnings = jev_sidecar_findings()
     errors.extend(jev_errors)
     warnings.extend(jev_warnings)
 
     if errors:
-        print(f"Vault validation failed with {len(errors)} error(s):")
+        print(f"Vault validation failed with {len(errors)} error(s) in {mode} mode:")
         for error in sorted(set(errors)):
             print(f"- {error}")
 
@@ -1655,14 +1990,19 @@ def main() -> int:
     if errors:
         return 1
 
-    print(
-        f"Vault validation passed: {len(notes)} managed notes, "
-        f"{len(all_note_paths())} Markdown files checked for wikilinks, "
-        f"{len(custom_agent_paths())} custom agents, "
-        f"and {len(repository_skill_dirs())} skills."
+    summary = (
+        f"Vault validation passed: {mode} mode, "
+        f"{len(managed_notes())} managed notes, {len(wiki_pages())} Wiki pages, "
+        f"{len(all_note_paths())} Markdown files checked for wikilinks"
     )
+    if mode == "strict":
+        summary += (
+            f", {len(custom_agent_paths())} custom agents, "
+            f"and {len(repository_skill_dirs())} skills"
+        )
+    print(summary + ".")
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main(sys.argv[1:]))

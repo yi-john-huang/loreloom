@@ -41,7 +41,9 @@ loreloom/
 │   ├── migrate_knowledge_to_wiki.py  # Dry run by default; --apply writes
 │   ├── validate_change.py
 │   ├── create_approval_receipt.py
-│   └── jev_advisory.py        # Optional, default-OFF advisory helper
+│   ├── jev_advisory.py        # Optional, default-OFF advisory helper
+│   ├── check_local.sh         # Local checks before a push; --portability adds Python 3.11 and 3.13
+│   └── install-hooks.sh       # Optional pre-push hook that runs check_local.sh
 ├── tests/
 │   ├── test_doctor_vault.py
 │   ├── test_validate_vault.py
@@ -62,7 +64,7 @@ loreloom/
 │   └── config.toml        # Model-neutral root sandbox configuration
 ├── .spec/
 │   └── steering/          # Versioned SDD project context
-├── .github/               # Issue/PR templates and validation workflow
+├── .github/               # Issue and PR templates (no GitHub Actions)
 ├── AGENTS.md              # Repository-wide safety rules and optional strict mode
 ├── pyproject.toml         # Python metadata and validation dependencies
 ├── uv.lock                # Reproducible dependency lock

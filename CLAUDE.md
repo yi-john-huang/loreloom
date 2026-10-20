@@ -127,6 +127,8 @@ The main points:
 | `daily` (default) | `uv run --locked python scripts/validate_vault.py --mode daily` | Basic frontmatter, required fields, broken wikilinks |
 | `strict` | `uv run --locked python scripts/validate_vault.py --mode strict` | Everything in daily, plus the full schema, Asset hashes, Source review state, capture fidelity, citation rules, repository hygiene, and agent tooling |
 
+There is no GitHub Actions. Before a push the owner asked for, run `scripts/check_local.sh`. It runs the doctor, both validation modes, the Wiki lint, and the test suite. Add `--portability` when the change touches the portable core.
+
 `uv run --locked python scripts/doctor_vault.py` shows the configured mode and a recommendation. Set the default mode in `pyproject.toml` under `[tool.loreloom]` with `validation_mode`, or with the `LORELOOM_VALIDATION_MODE` environment variable.
 
 ## Strict mode (optional)

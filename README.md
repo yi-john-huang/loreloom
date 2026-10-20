@@ -147,7 +147,7 @@ See [Architecture](docs/ARCHITECTURE.md) for the full lifecycle.
 | AI interface | Any external agent chosen by the user | An external agent (Claude Code, Codex, Grok, or another) that follows `CLAUDE.md` and the repository skills, plus terminal validators; no in-Obsidian AI command or query UI | Obsidian command-palette and side-panel workflows for ingest, query, lint, and maintenance |
 | Retrieval | `index.md` first, with optional search such as `qmd`; no retrieval implementation is required by the gist | `index.md` first, then wikilinks, MOCs, and ordinary file search; no embedding database, RAG, or built-in query service | Lexical/LLM seed selection followed by Personalized PageRank over the generated wiki-link graph; no embedding index |
 | Governance | A co-evolved schema/instruction file; enforcement depends on the implementation the user builds | Default: six-field page frontmatter, the auto-accept rule, a review log, and the daily validator. Strict mode: full frontmatter schema, provenance, Asset hashes, Source review, human promotion gates, and optional signed approvals | Plugin settings, lint/maintenance operations, contradiction states, and reviewed-page overwrite protection |
-| Model and platform contract | Defined by the implementation the user chooses | Shipped Codex config has no model pin; core doctor/validator coverage runs on Ubuntu, macOS, and Windows with Python 3.11/3.13; advanced guarded changes require POSIX or WSL | The user configures a provider; [manifest metadata](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/manifest.json) declares Obsidian 1.11+ and `isDesktopOnly: false` |
+| Model and platform contract | Defined by the implementation the user chooses | Shipped Codex config has no model pin; core doctor/validator checks run locally with `scripts/check_local.sh --portability` on Python 3.11/3.13 (there is no automated Ubuntu/macOS/Windows matrix; run it on your own OS); advanced guarded changes require POSIX or WSL | The user configures a provider; [manifest metadata](https://github.com/green-dalii/obsidian-llm-wiki/blob/main/manifest.json) declares Obsidian 1.11+ and `isDesktopOnly: false` |
 | Best fit | Building a minimal custom system from the original design pattern | A personal, Git-versioned vault that an agent keeps current, with an optional strict mode when provenance and human authority boundaries are the main requirement | Convenient in-Obsidian ingestion, generated-wiki navigation, and conversational query |
 
 Choose the gist to design a bespoke system, the plugin for in-Obsidian AI operations, or Loreloom when you want a ready repository with a lightweight default and stricter traceability and review boundaries available on demand. Loreloom's contracts are detailed in [Architecture](docs/ARCHITECTURE.md), [Frontmatter schemas](docs/FRONTMATTER.md), and [Advanced multi-agent execution](docs/MULTI_AGENT.md).
@@ -212,7 +212,7 @@ The validator has two modes. `daily` is the default.
 | Mode | Use it | Checks |
 |---|---|---|
 | `daily` | After every ingest or filed answer | Basic frontmatter and required fields (`type`, `title`, `status`) on lifecycle notes, the six-field contract on Wiki pages, and broken or ambiguous wikilinks |
-| `strict` | Before publishing, for high-governance vaults, and in CI | Everything in `daily`, plus every check in the list below |
+| `strict` | Before publishing, for high-governance vaults, and in `scripts/check_local.sh` | Everything in `daily`, plus every check in the list below |
 
 Daily mode treats `Sources/` as raw evidence: a file there needs no frontmatter, and a broken link inside it is a warning, because agents never change those files. Daily mode also warns when a Wiki page is missing from `index.md` or a queued page is missing from `log.md`. In both modes a page in `Wiki/_review/` must stay `status: draft`, and a `reviewed` or `evergreen` page needs at least one source.
 
@@ -237,7 +237,7 @@ Strict mode checks:
 
 For **advanced owner-approved multi-agent changes**, `scripts/validate_change.py` additionally compares the diff with an immutable pre-task `HEAD` and filesystem snapshot, then enforces exact output scope, protected paths, strict processing Source admission, append-only reviewed Sources, signed `source_review`, review/archive gates, and preserved Wiki human blocks. Gated approvals require a short-lived, path-specific receipt under protected Git metadata. Native Windows users run this advanced path in WSL. See [Advanced multi-agent execution](docs/MULTI_AGENT.md).
 
-GitHub Actions runs the vault validator in both modes, the Wiki lint report, and the adversarial guardrail tests on pushes and pull requests.
+This repository has no GitHub Actions. Run `scripts/check_local.sh` before you push. It runs the doctor, the vault validator in both modes, the Wiki lint report, and the full test suite. Add `--portability` when you change the portable core; it repeats the core checks on Python 3.11 and 3.13. macOS and Windows contributors run `--portability` on their own system, because one machine cannot reproduce the other systems of the old CI matrix. `scripts/install-hooks.sh` optionally installs a pre-push hook that runs the same checks. See [Local checks](CONTRIBUTING.md#local-checks-no-github-actions).
 
 ### Optional Jev advisory (default OFF)
 

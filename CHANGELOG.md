@@ -24,6 +24,8 @@ The format is based on Keep a Changelog, and the project follows semantic versio
 - `ingest`, `query`, `file-answer`, and `lint` skills, plus the read-only helpers `scripts/ingest_gate.py` (auto-accept rule) and `scripts/lint_wiki.py` (Wiki health report).
 - `scripts/migrate_knowledge_to_wiki.py` (dry run by default, `--apply` to write) and `docs/migration-lightweight.md` for gradual migration of `Knowledge/` notes.
 - A pointer to the sdd-mcp [`output-clarity-ladder` skill](https://github.com/yi-john-huang/sdd-mcp/blob/master/skills/output-clarity-ladder/SKILL.md) (installed with `npx -y sdd-mcp-server@latest setup-global`) as the writing style for Wiki prose, with its `references/zh-TW.md` for Traditional Chinese. The repository keeps no copy of the skill. Also a "Scope of use" section in `README.md` and `CLAUDE.md`.
+- `scripts/check_local.sh` runs every check of the removed CI before a push: `uv sync --locked --dev`, the doctor, daily and strict validation, the Wiki lint report, and the full test suite. Strict validation is a gate. `--portability` repeats the doctor, both validation modes, and the four portable test modules on Python 3.11 and 3.13. In the framework repository the doctor runs in a temporary copy of the working tree without `origin`; the script never changes Git remotes.
+- Optional `scripts/install-hooks.sh` installs a pre-push hook that runs `scripts/check_local.sh`. Nothing installs it automatically; `--force` replaces a hook that it did not write.
 
 ### Changed
 
@@ -34,5 +36,9 @@ The format is based on Keep a Changelog, and the project follows semantic versio
 - Replaced pip requirements with a locked uv project for local validation and CI.
 - Renamed the default branch from `main` to `master`.
 - Routed bounded source extraction and classification to Luna High while retaining Terra Max for knowledge distillation.
+
+### Removed
+
+- The GitHub Actions workflow `.github/workflows/validate.yml`. The repository has no hosted CI. Run `scripts/check_local.sh` before a push, and `scripts/check_local.sh --portability` when a change touches the portable core. The macOS and Windows legs of the old matrix cannot be reproduced on one machine; contributors on those systems run `--portability` there.
 
 [Unreleased]: https://github.com/yi-john-huang/loreloom/compare/v0.1.0...HEAD

@@ -103,6 +103,7 @@ After making changes:
 - **strict mode:** request a read-only `vault-reviewer` pass for material multi-agent changes when that role is available; otherwise require direct owner review and report incomplete specialist coverage;
 - report created, updated, skipped, and uncertain items;
 - in the lightweight flow, request owner review only for pages that fail the auto-accept rule, and record each one in `log.md`; in strict mode, request human review for new Knowledge claims and material Wiki changes;
+- before a push the user asked for, run `scripts/check_local.sh` (there is no GitHub Actions), and add `--portability` when the change touches the portable core;
 - do not commit or push unless the user explicitly asks.
 
 ## Definition of done

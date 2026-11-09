@@ -17,7 +17,7 @@ Auto-accept gate and Wiki lint (lightweight flow, read-only)
 Read-only readiness doctor
                 |
                 v
-Owner review of exceptions, commit, and GitHub Actions
+Owner review of exceptions, commit, and local checks (scripts/check_local.sh)
 ```
 
 There is no application server, database, API, container, compiled bundle, or production build artifact. This phase has no vector database and no RAG; agents find pages through `index.md`, wikilinks, and file search.
@@ -37,12 +37,12 @@ There is no application server, database, API, container, compiled bundle, or pr
 | Tests | `unittest` | Standard-library guardrail and regression tests; `pytest` is locked as an optional runner |
 | Version control | Git | Reviewable history and immutable change bases |
 | Default branch | `master` | Framework integration and publication branch |
-| Hosting and CI | GitHub and GitHub Actions | Public framework/template distribution and validation |
+| Hosting and checks | GitHub; local `scripts/check_local.sh` (no GitHub Actions) | Public framework/template distribution; validation runs locally before a push |
 
 ## Python Versions
 
 - `pyproject.toml` supports Python `>=3.11`.
-- `.python-version` selects Python `3.13` for repository development and CI setup.
+- `.python-version` selects Python `3.13` for repository development and for the default environment that `scripts/check_local.sh` restores.
 - Use uv rather than manual virtual environments, pip requirements files, or direct lockfile edits.
 
 ## Dependencies
@@ -84,7 +84,7 @@ The complete cross-platform environment is pinned in `uv.lock`. When intentional
 | Mode | Use | Checks |
 |---|---|---|
 | `daily` (default) | After every write in the lightweight flow | Basic frontmatter and required fields (`type`, `title`, `status`) on lifecycle notes, and broken wikilinks |
-| `strict` | When the owner asks for strict mode, before publishing, and in CI | Everything in daily, plus the full schema, Asset hashes, Source review state, capture fidelity, citation rules, repository hygiene, and agent tooling |
+| `strict` | When the owner asks for strict mode, before publishing, and in `scripts/check_local.sh` | Everything in daily, plus the full schema, Asset hashes, Source review state, capture fidelity, citation rules, repository hygiene, and agent tooling |
 
 The mode comes from `--mode`, then the `LORELOOM_VALIDATION_MODE` environment variable, then `validation_mode` under `[tool.loreloom]` in `pyproject.toml` (committed value: `"daily"`). An unknown configured mode exits `2`.
 
@@ -213,8 +213,10 @@ Never regenerate the preflight snapshot after work begins or change the final al
 
 ## Testing and Quality Gates
 
-- GitHub Actions retains the full Ubuntu Python 3.13 job: the validator in daily mode and in strict mode, the Wiki lint report, and all validator and guardrail tests.
-- A core portability matrix runs the doctor, the validator in both modes, and the doctor, validator, Jev advisory, and lightweight-flow tests on Ubuntu, macOS, and Windows with Python 3.11 and 3.13; native Windows does not run the POSIX guarded-change suite.
+- There is no GitHub Actions. `scripts/check_local.sh` is the single local entry point. It runs `uv sync --locked --dev`, the doctor, the validator in daily mode and in strict mode, the Wiki lint report, and all validator and guardrail tests on the default Python (`.python-version`, 3.13). Every gate blocks, including strict validation.
+- `scripts/check_local.sh --portability` repeats the doctor and the validator in both modes, and runs the doctor, validator, Jev advisory, and lightweight-flow tests, on Python 3.11 and 3.13. Run it when a change touches the portable core. One machine covers only its own operating system, so contributors on macOS or Windows run it on that system; native Windows does not run the POSIX guarded-change suite.
+- The framework repository's `origin` is the public Loreloom framework, so the doctor fails `remote-privacy` there by design. `scripts/check_local.sh` runs the doctor in a temporary copy of the working tree without `origin` and never changes the user's remotes.
+- `scripts/install-hooks.sh` optionally installs a pre-push hook that runs `scripts/check_local.sh`. Nothing installs it automatically.
 - Tests use temporary Git repositories and filesystem fixtures to verify real boundary behavior.
 - Add regression coverage with every schema, doctor, validator, gate, lint, migration, policy-enforcement, or approval-flow change. `tests/test_lightweight_flow.py` covers the lightweight flow.
 - No linter, static type checker, coverage threshold, development server, or build command is currently configured; do not invent one in requirements or task plans.

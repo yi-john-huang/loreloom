@@ -161,10 +161,10 @@ Loreloom does not:
 
 Product quality is measured through repository invariants rather than usage telemetry:
 
-- `validate_vault.py` passes in `daily` mode after every write, and in `strict` mode before publishing and in CI;
+- `validate_vault.py` passes in `daily` mode after every write, and in `strict` mode before publishing and in `scripts/check_local.sh`;
 - every Wiki page outside `Wiki/_review/` is listed in `index.md`, and every page that needs the owner has a `Needs review:` line in `log.md`;
 - no page is `status: reviewed` without `reviewed_by: owner` while it fails the auto-accept rule;
-- validator guardrail tests pass locally and in GitHub Actions;
+- validator guardrail tests pass locally through `scripts/check_local.sh` (there is no GitHub Actions);
 - durable Knowledge claims retain traceable evidence;
 - Sources remain provenance-bound and explicitly classified without implying that hashes, validators, or owner confidence prove semantic fidelity; generated Wiki pages remain reproducible;
 - when the guarded change workflow is used, protected human content and review-state changes require explicit approval and reviewable diffs;

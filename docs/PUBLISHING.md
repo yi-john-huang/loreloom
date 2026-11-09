@@ -34,8 +34,8 @@ Before publishing a contribution:
 ## Release checklist
 
 - [ ] Public repository URLs point to the intended owner and repository.
-- [ ] Validation passes locally and in GitHub Actions.
-- [ ] Default branch protection and required checks configured.
+- [ ] `scripts/check_local.sh` passes locally (there is no GitHub Actions).
+- [ ] Default branch protection configured. There are no required status checks.
 - [ ] Repository description and topics added.
 - [ ] Template repository setting enabled.
 - [ ] A test private vault was created from the template.
